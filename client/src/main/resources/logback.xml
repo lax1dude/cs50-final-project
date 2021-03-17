@@ -1,0 +1,36 @@
+<configuration packagingData="true">
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{kk:mm:ss+SSS} [%thread/%level] %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="INFOFILE" class="ch.qos.logback.core.FileAppender">
+    <file>logs/main.log</file>
+    <append>false</append>
+    <encoder>
+      <pattern>%d{kk:mm:ss+SSS} [%thread/%level] %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="TRACEFILE" class="ch.qos.logback.core.FileAppender">
+    <file>logs/trace.log</file>
+    <append>false</append>
+    <encoder>
+      <pattern>%d{kk:mm:ss+SSS} [%thread/%level] [%class:%line] %logger - %msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <root level="info">
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="INFOFILE" />
+  </root>
+  
+  <root level="trace">
+    <appender-ref ref="TRACEFILE" />
+  </root>
+  
+  <shutdownHook />
+  
+</configuration>
