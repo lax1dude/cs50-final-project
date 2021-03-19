@@ -1,4 +1,4 @@
-package net.eagtek.metaballs;
+package net.eagtek.eagl;
 
 import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
@@ -30,9 +30,9 @@ import java.util.LinkedList;
 import org.lwjgl.egl.EGL;
 
 
-public class ANGLEContext {
+public class EaglContext {
 	
-	public static final Logger log = LoggerFactory.getLogger("ANGLEContext");
+	public static final Logger log = LoggerFactory.getLogger("EAGL");
 
 	public static enum ToolkitPlatform {
 		desktop;
@@ -69,7 +69,7 @@ public class ANGLEContext {
 		return caps;
 	}
 	
-	public ANGLEContext(ToolkitPlatform toolkit, ContextPlatform platform, String title) {
+	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title) {
 		this.toolkit = toolkit;
 		this.platform = platform;
 		this.title = title;
@@ -80,13 +80,40 @@ public class ANGLEContext {
 			createGLFW();
 		}
 	}
+	
+	public void checkError(String location) {
+		int error;
+		while((error = glGetError()) != GL_NO_ERROR) {
+			switch(error) {
+			case GL_INVALID_ENUM:
+				log.error("GL ERROR: GL_INVALID_ENUM @ {}", location);
+				break;
+			case GL_INVALID_VALUE:
+				log.error("GL ERROR: GL_INVALID_VALUE @ {}", location);
+				break;
+			case GL_INVALID_OPERATION:
+				log.error("GL ERROR: GL_INVALID_OPERATION @ {}", location);
+				break;
+			case GL_INVALID_FRAMEBUFFER_OPERATION:
+				log.error("GL ERROR: GL_INVALID_FRAMEBUFFER_OPERATION @ {}", location);
+				break;
+			case GL_OUT_OF_MEMORY:
+				log.error("GL ERROR: GL_OUT_OF_MEMORY @ {}", location);
+				break;
+			default:
+				log.error("GL ERROR: UNKNOWN @ {}", location);
+				break;
+			}
+			Thread.dumpStack();
+		}
+	}
 
 	private void createGLFW() {
 		GLFWErrorCallback.createThrow().set();
 		
 		glfwInit();
 		
-		log.info("loading GLFW {}", glfwGetVersionString());
+		log.info("GLFW Version: {}", glfwGetVersionString());
 		
 		glfwDefaultWindowHints();
 		glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
@@ -114,13 +141,12 @@ public class ANGLEContext {
         caps = GLES.createCapabilities();
 
         log.info("OpenGL Version: {}", glGetString(GL_VERSION));
-        log.info("OpenGL Vendor: {}", glGetString(GL_VENDOR));
         log.info("OpenGL Renderer: {}", glGetString(GL_RENDERER));
 
         glfwSetKeyCallback(glfw_windowHandle, new GLFWKeyCallbackI() {
 			@Override
 			public void invoke(long window, int key, int scancode, int action, int mods) {
-				if(keyEvents.size() < 256) {
+				if(keyEvents.size() < 256 && !(!keyRepeat && action == GLFW_REPEAT)) {
 					keyEvents.add(new KeyboardEvent(key, (action == GLFW_PRESS) || (action == GLFW_REPEAT), action == GLFW_REPEAT));
 				}
 			}
@@ -138,8 +164,8 @@ public class ANGLEContext {
         glfwSetCursorPosCallback(glfw_windowHandle, new GLFWCursorPosCallbackI() {
 			@Override
 			public void invoke(long window, double xpos, double ypos) {
-				ANGLEContext.this.mousex = (int)xpos;
-				ANGLEContext.this.mousey = (int)ypos;
+				EaglContext.this.mousex = (int)xpos;
+				EaglContext.this.mousey = (int)ypos;
 			}
 		});
         
@@ -147,7 +173,7 @@ public class ANGLEContext {
 			@Override
 			public void invoke(long window, int button, int action, int mods) {
 				if(mouseEvents.size() < 256) {
-					mouseEvents.add(new MouseEvent(action == GLFW_PRESS, button, ANGLEContext.this.mousex, ANGLEContext.this.mousey, false, 0.0f, 0.0f));
+					mouseEvents.add(new MouseEvent(action == GLFW_PRESS, button, EaglContext.this.mousex, EaglContext.this.mousey, false, 0.0f, 0.0f));
 				}
 			}
 		});
@@ -155,7 +181,7 @@ public class ANGLEContext {
         glfwSetWindowFocusCallback(glfw_windowHandle, new GLFWWindowFocusCallbackI() {
 			@Override
 			public void invoke(long window, boolean focused) {
-				ANGLEContext.this.focused = focused;
+				EaglContext.this.focused = focused;
 			}
 		});
         
@@ -170,6 +196,15 @@ public class ANGLEContext {
 	private void destroyGLFW() {
 		GLES.setCapabilities(null);
 		glfwTerminate();
+	}
+	
+	public static boolean contextAvailable() {
+		try {
+			GLES.getCapabilities();
+			return true;
+		}catch(IllegalStateException e) {
+			return false;
+		}
 	}
 	
 	public void setTitle(String s) {

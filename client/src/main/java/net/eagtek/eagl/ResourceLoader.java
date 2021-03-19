@@ -1,4 +1,4 @@
-package net.eagtek.metaballs;
+package net.eagtek.eagl;
 
 import java.io.File;
 import java.io.FileInputStream;
