@@ -3,11 +3,14 @@ package net.eagtek.metaballs;
 import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
 import org.lwjgl.glfw.GLFWWindowFocusCallbackI;
+import org.lwjgl.glfw.GLFWImage.Buffer;
 import org.lwjgl.opengles.GLES;
 import org.lwjgl.opengles.GLESCapabilities;
+import org.lwjgl.system.MemoryStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +23,8 @@ import static org.lwjgl.opengles.GLES30.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.awt.image.BufferedImage;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.LinkedList;
 
 import org.lwjgl.egl.EGL;
@@ -81,7 +86,7 @@ public class ANGLEContext {
 		
 		glfwInit();
 		
-		log.info("GLFW Version: {}", glfwGetVersionString());
+		log.info("loading GLFW {}", glfwGetVersionString());
 		
 		glfwDefaultWindowHints();
 		glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
@@ -108,9 +113,9 @@ public class ANGLEContext {
         
         caps = GLES.createCapabilities();
 
-        log.info("GL_VENDOR: {}", glGetString(GL_VENDOR));
-        log.info("GL_VERSION: {}", glGetString(GL_VERSION));
-        log.info("GL_RENDERER: {}", glGetString(GL_RENDERER));
+        log.info("OpenGL Version: {}", glGetString(GL_VERSION));
+        log.info("OpenGL Vendor: {}", glGetString(GL_VENDOR));
+        log.info("OpenGL Renderer: {}", glGetString(GL_RENDERER));
 
         glfwSetKeyCallback(glfw_windowHandle, new GLFWKeyCallbackI() {
 			@Override
@@ -226,16 +231,45 @@ public class ANGLEContext {
 		return null;
 	}
 	
+	public void setClipboardString(String s) {
+		if(toolkit == ToolkitPlatform.desktop) {
+			glfwSetClipboardString(glfw_windowHandle, s);
+		}
+	}
+	
 	public void setFullscreen(boolean fs) {
-		
+		throw new RuntimeException("not implemented");
 	}
 	
 	public boolean getFullscreen() {
-		return false;
+		throw new RuntimeException("not implemented");
 	}
 	
 	public void setIcons(BufferedImage[] icons) {
-		
+		try {
+			try (MemoryStack memorystack = MemoryStack.stackPush()) {
+				Buffer buffer = GLFWImage.mallocStack(icons.length, memorystack);
+				for(int i = 0; i < icons.length; ++i) {
+					buffer.position(i);
+					buffer.width(icons[i].getWidth());
+					buffer.height(icons[i].getHeight());
+					
+					int[] image = icons[i].getRGB(0, 0, icons[i].getWidth(), icons[i].getHeight(), null, 0, icons[i].getWidth());
+					
+					for(int j = 0; j < image.length; ++j) {
+						image[j] = image[j] << 8;
+					}
+					
+					ByteBuffer imageBuffer = memorystack.malloc(image.length * 4).order(ByteOrder.BIG_ENDIAN);
+					
+					imageBuffer.asIntBuffer().put(image);
+					
+					buffer.pixels(imageBuffer);
+				}
+				glfwSetWindowIcon(glfw_windowHandle, buffer);
+			}
+		}catch(Throwable t) {
+		}
 	}
 	
 	public void swapBuffers(boolean sync) {
@@ -386,6 +420,14 @@ public class ANGLEContext {
 	public int mouseY() {
 		return mousey;
 	}
+	
+	public void setMousePos(int x, int y) {
+		if(toolkit == ToolkitPlatform.desktop) {
+			glfwSetCursorPos(glfw_windowHandle, x, y);
+		}
+	}
+	
+	/*
 
 	public static class ControllerEvent {
 		
@@ -428,5 +470,6 @@ public class ANGLEContext {
 	public float getControllerPovY() {
 		return 0f;
 	}
+	*/
 
 }
