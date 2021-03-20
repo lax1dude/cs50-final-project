@@ -10,6 +10,10 @@ public class EaglIndexBuffer {
 	public final GLDataType indexType;
 	private int bufferSize;
 	private boolean destroyed = false;
+
+	public int getBufferSize() {
+		return bufferSize;
+	}
 	
 	public EaglIndexBuffer(GLDataType indexType) {
 		this.glObject = glGenBuffers();

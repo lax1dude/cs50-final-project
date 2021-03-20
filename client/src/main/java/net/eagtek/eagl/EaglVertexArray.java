@@ -14,7 +14,7 @@ public class EaglVertexArray {
 		public final int strideBytes;
 		public final int startByte;
 		
-		public VertexAttribPointer(int bufferNumber, int indexNumber, int componentCount, GLDataType datatype, boolean normalize, int strideBytes, int startByte) {
+		protected VertexAttribPointer(int bufferNumber, int indexNumber, int componentCount, GLDataType datatype, boolean normalize, int strideBytes, int startByte) {
 			this.bufferNumber = bufferNumber;
 			this.indexNumber = indexNumber;
 			this.componentCount = componentCount;
@@ -24,6 +24,10 @@ public class EaglVertexArray {
 			this.startByte = startByte;
 		}
 		
+	}
+	
+	public static VertexAttribPointer attrib(int bufferNumber, int indexNumber, int componentCount, GLDataType datatype, boolean normalize, int strideBytes, int startByte) {
+		return new VertexAttribPointer(bufferNumber, indexNumber, componentCount, datatype, normalize, strideBytes, startByte);
 	}
 
 	public final EaglVertexBuffer[] buffers;
@@ -56,32 +60,71 @@ public class EaglVertexArray {
 		this(buffersv, pointersv, null);
 	}
 	
-	public void draw(int drawMode, int start, int len) {
-		for(int i = 0; i < pointers.length; ++i) {
-			glEnableVertexAttribArray(i);
+	public static int enabledVertexAttribArrays = 0;
+	
+	public static void setEnabledAttribArrays(int num) {
+		if(enabledVertexAttribArrays != num) {
+			if(enabledVertexAttribArrays > num) {
+				for(int i = num; i < enabledVertexAttribArrays; ++i) {
+					glDisableVertexAttribArray(i);
+				}
+			}else {
+				for(int i = enabledVertexAttribArrays; i < num; ++i) {
+					glEnableVertexAttribArray(i);
+				}
+			}
+			enabledVertexAttribArrays = num;
 		}
+	}
+	
+	public void draw(int drawMode, int start, int len) {
+		
+		setEnabledAttribArrays(pointers.length);
+		
 		if(indexBuffer != null) {
 			glDrawElements(drawMode, len, indexBuffer.indexType.glEnum, start * indexBuffer.indexType.bytesUsed);
 		}else {
 			glDrawArrays(drawMode, start, len);
 		}
-		for(int i = 0; i < pointers.length; ++i) {
-			glDisableVertexAttribArray(i);
-		}
+		
 	}
 	
+	
 	public void drawAll(int drawMode) {
+
+		setEnabledAttribArrays(pointers.length);
+		
 		if(indexBuffer != null) {
 			glDrawElements(drawMode, indexBuffer.getIndiciesCount(), indexBuffer.indexType.glEnum, 0);
 		}else {
 			throw new IllegalArgumentException("drawAll is for VAOs with index buffers");
 		}
+		
+	}
+	
+	public void drawInstanced(int drawMode, int start, int len, int instances) {
+
+		setEnabledAttribArrays(pointers.length);
+		
+		if(indexBuffer != null) {
+			glDrawElementsInstanced(drawMode, len, indexBuffer.indexType.glEnum, start * indexBuffer.indexType.bytesUsed, instances);
+		}else {
+			glDrawArraysInstanced(drawMode, start, len, instances);
+		}
+		
 	}
 	
 	public void destroy() {
 		if(!destroyed) {
 			glDeleteVertexArrays(glObject);
 			destroyed = true;
+		}
+	}
+	
+	public void destroyWithBuffers() {
+		destroy();
+		for(EaglVertexBuffer b : buffers) {
+			b.destroy();
 		}
 	}
 	

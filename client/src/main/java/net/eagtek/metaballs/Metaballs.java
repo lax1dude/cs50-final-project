@@ -4,11 +4,9 @@ import static org.lwjgl.opengles.GLES30.*;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import javax.imageio.ImageIO;
 
-import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,8 +14,10 @@ import net.eagtek.eagl.EaglContext;
 import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.eagl.EaglContext.ContextPlatform;
 import net.eagtek.eagl.EaglContext.ToolkitPlatform;
+import net.eagtek.eagl.EaglIndexBuffer;
 import net.eagtek.eagl.EaglProgram;
 import net.eagtek.eagl.EaglShader;
+import net.eagtek.eagl.EaglTessellator;
 import net.eagtek.eagl.EaglVertexArray;
 import net.eagtek.eagl.EaglVertexBuffer;
 import net.eagtek.eagl.GLDataType;
@@ -42,23 +42,29 @@ public class Metaballs {
 			e.printStackTrace();
 		}
 		
-		float[] verts = new float[] {
-				-0.5f, -0.5f, 0.0f,
-				 0.5f, -0.5f, 0.0f,
-				 0.0f,  0.5f, 0.0f
-		};
-		
-		ByteBuffer b = MemoryUtil.memAlloc(verts.length * 4);
-		b.asFloatBuffer().put(verts);
-		
-		EaglVertexBuffer vbo = new EaglVertexBuffer().upload(b);
+		EaglVertexBuffer vbo = new EaglVertexBuffer();
+		EaglIndexBuffer ibo = new EaglIndexBuffer(GLDataType.SHORT_U);
 		
 		EaglVertexArray vao = new EaglVertexArray(
 				new EaglVertexBuffer[] { vbo },
 				new EaglVertexArray.VertexAttribPointer[] {
-						new EaglVertexArray.VertexAttribPointer(0, 0, 3, GLDataType.FLOAT, false, 12, 0)
-				}
+						EaglVertexArray.attrib(0, 0, 3, GLDataType.FLOAT, false, 12, 0)
+				},
+				ibo
 		);
+		
+		EaglTessellator t = new EaglTessellator(12, 128, 128);
+
+		int a = t.put_vec3f(-0.5f, -0.5f, 0.0f).endVertex();
+		int b = t.put_vec3f(0.5f, -0.5f, 0.0f).endVertex();
+		int c = t.put_vec3f(0.5f, 0.5f, 0.0f).endVertex();
+		int d = t.put_vec3f(-0.5f, 0.5f, 0.0f).endVertex();
+
+		t.addToIndex(a).addToIndex(b).addToIndex(c);
+		t.addToIndex(a).addToIndex(c).addToIndex(d);
+		
+		t.uploadVertexes(vbo, true);
+		t.uploadIndexes(ibo, true);
 
 		EaglShader vsh = new EaglShader(GL_VERTEX_SHADER).compile(ResourceLoader.loadResourceString("metaballs/shaders/test.vsh"), "test.vsh");
 		EaglShader fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(ResourceLoader.loadResourceString("metaballs/shaders/test.fsh"), "test.fsh");
@@ -71,7 +77,9 @@ public class Metaballs {
 		while(!ctx.closeRequested()) {
 			glClearColor(0.0f, 0.0f, 0.5f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
-			vao.draw(GL_TRIANGLES, 0, 3);
+			
+			vao.draw(GL_TRIANGLES, 0, 6);
+			
 			ctx.swapBuffers(false);
 			ctx.pollEvents();
 		}

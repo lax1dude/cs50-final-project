@@ -10,6 +10,10 @@ public class EaglVertexBuffer {
 	private int bufferSize;
 	private boolean destroyed = false;
 	
+	public int getBufferSize() {
+		return bufferSize;
+	}
+	
 	public EaglVertexBuffer() {
 		this.glObject = glGenBuffers();
 		this.bufferSize = -1;
