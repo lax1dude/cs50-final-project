@@ -2,14 +2,37 @@ package net.eagtek.eagl;
 
 import static org.lwjgl.opengles.GLES30.*;
 
+import java.util.HashMap;
+
 public class EaglProgram {
 	
 	public final int glObject;
 	
-	public boolean destroyed = false;
+	private boolean destroyed = false;
+	
+	private final HashMap<String,EaglUniform> uniforms;
+	
+	public EaglUniform matrix_m = null;
+	public EaglUniform matrix_v = null;
+	public EaglUniform matrix_p = null;
+	public EaglUniform matrix_mvp = null;
+	public EaglUniform matrix_mv = null;
+	
+	public EaglUniform matrix_mvp_inv = null;
+	public EaglUniform matrix_vp_inv = null;
+	public EaglUniform matrix_p_inv = null;
+
+	public EaglUniform matrix_m_invtrans = null;
+	public EaglUniform matrix_mv_invtrans = null;
+	
+	public EaglUniform shadowmatrix_near = null;
+	public EaglUniform shadowmatrix_far = null;
+
+	public EaglUniform shadowblur_near = null;
 	
 	public EaglProgram() {
 		glObject = glCreateProgram();
+		uniforms = new HashMap();
 	}
 	
 	public EaglProgram compile(EaglShader... shaders) {
@@ -32,6 +55,25 @@ public class EaglProgram {
 			throw new IllegalArgumentException("Could not link program");
 		}
 		
+		this.matrix_m = getUniform("matrix_m");
+		this.matrix_v = getUniform("matrix_v");
+		this.matrix_p = getUniform("matrix_p");
+		
+		this.matrix_mvp = getUniform("matrix_mvp");
+		this.matrix_mv = getUniform("matrix_mv");
+
+		this.matrix_mvp_inv = getUniform("matrix_mvp_inv");
+		this.matrix_vp_inv = getUniform("matrix_mvp_inv");
+		this.matrix_p_inv = getUniform("matrix_p_inv");
+
+		this.matrix_m_invtrans = getUniform("matrix_m_invtrans");
+		this.matrix_mv_invtrans = getUniform("matrix_mv_invtrans");
+
+		this.shadowmatrix_near = getUniform("shadowmatrix_near");
+		this.shadowmatrix_far = getUniform("shadowmatrix_far");
+		
+		this.shadowblur_near = getUniform("shadowblur_near");
+		
 		return this;
 	}
 	
@@ -43,7 +85,25 @@ public class EaglProgram {
 	}
 	
 	public void use() {
-		glUseProgram(glObject);
+		GLStateManager.bindProgram(glObject);
+	}
+
+	public int getUniformLocation(String name) {
+		return getUniform(name).glObject;
+	}
+	
+	public EaglUniform getUniform(String name) {
+		EaglUniform e = uniforms.get(name);
+		if(e == null) {
+			int u = glGetUniformLocation(glObject, name);
+			if(u == -1) {
+				e = null;
+			}else {
+				e = new EaglUniform(u, this);
+				uniforms.put(name, e);
+			}
+		}
+		return e;
 	}
 	
 	public void finalize() {

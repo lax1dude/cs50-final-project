@@ -31,5 +31,6 @@ dependencies {
 	implementation 'commons-codec:commons-codec:1.15'
 	implementation 'org.json:json:20210307'
 	implementation 'ch.qos.logback:logback-classic:1.2.3'
+	implementation 'net.sf.jopt-simple:jopt-simple:5.0.4'
 	
 }

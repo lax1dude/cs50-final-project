@@ -1,6 +1,12 @@
-package net.eagtek.metaballs;
+package net.eagtek.metaballs.client;
 
 public class GameConfiguration {
+
+	public static final String gameName = "Metaballs";
+	public static final int major = 0;
+	public static final int minor = 0;
+	public static final int patch = 1;
+	public static final String versionString = "a" + major + "." + minor + "." + patch;
 
 	public static String glslVersion = "#version 300 es";
 

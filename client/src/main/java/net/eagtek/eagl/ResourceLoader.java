@@ -86,7 +86,9 @@ public class ResourceLoader {
 			if(is == null) {
 				return null;
 			}else {
-				return IOUtils.toByteArray(is);
+				byte[] b = IOUtils.toByteArray(is);
+				is.close();
+				return b;
 			}
 		} catch (IOException e) {
 			return null;
@@ -99,7 +101,9 @@ public class ResourceLoader {
 			if(is == null) {
 				return null;
 			}else {
-				return IOUtils.toString(is, Charset.forName("UTF8"));
+				String s = IOUtils.toString(is, Charset.forName("UTF8"));
+				is.close();
+				return s;
 			}
 		} catch (IOException e) {
 			return null;
@@ -112,7 +116,9 @@ public class ResourceLoader {
 			if(is == null) {
 				return null;
 			}else {
-				return IOUtils.readLines(is, Charset.forName("UTF8"));
+				List<String> l = IOUtils.readLines(is, Charset.forName("UTF8"));
+				is.close();
+				return l;
 			}
 		} catch (IOException e) {
 			return null;

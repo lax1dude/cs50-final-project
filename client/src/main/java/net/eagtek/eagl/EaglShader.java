@@ -9,7 +9,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
-import net.eagtek.metaballs.GameConfiguration;
+import net.eagtek.metaballs.client.GameConfiguration;
 
 public class EaglShader {
 	
@@ -28,15 +28,22 @@ public class EaglShader {
 		List<String> sourceLines = new LinkedList();
 		
 		sourceLines.addAll(Arrays.asList(source.replace('\r', ' ').split("\n")));
-		sourceLines.add(0, GameConfiguration.glslVersion);
+
+		sourceLines.add(0, "#line 1");
 		
 		String include = "";
+		
+		if(type == GL_FRAGMENT_SHADER) {
+			include += "#define FRAG\n";
+		}else if(type == GL_VERTEX_SHADER) {
+			include += "#define VERT\n";
+		}
 		
 		boolean precisionOverride = false;
 		Iterator<String> i = sourceLines.iterator();
 		while(i.hasNext()) {
 			String s = i.next();
-			if(s.startsWith("#include ")) {
+			if(s.startsWith("//include ")) {
 				String[] ss = s.split(" ", 2);
 				if(ss.length > 1) {
 					String includeSource = ResourceLoader.loadResourceString("metaballs/shaders/" + ss[1]);
@@ -44,22 +51,23 @@ public class EaglShader {
 						include += (includeSource + "\n");
 					}
 				}
-				i.remove();
 			}else if(s.startsWith("precision ")) {
 				precisionOverride = true;
 			}
 		}
 		
-		if(include.length() > 0) sourceLines.add(1, include);
+		if(include.length() > 0) sourceLines.add(0, include);
 		
 		if(!precisionOverride) {
-			sourceLines.addAll(1, Arrays.asList(new String[] {
+			sourceLines.addAll(0, Arrays.asList(new String[] {
 					"precision " + (type == GL_FRAGMENT_SHADER ? GameConfiguration.glslFrag_FloatPrecision : GameConfiguration.glslVert_FloatPrecision) + " float;",
 					"precision " + (type == GL_FRAGMENT_SHADER ? GameConfiguration.glslFrag_IntPrecision : GameConfiguration.glslVert_IntPrecision) + " int;",
 					"precision " + (type == GL_FRAGMENT_SHADER ? GameConfiguration.glslFrag_SamplerPrecision : GameConfiguration.glslVert_SamplerPrecision) + " sampler2D;",
 					"precision " + (type == GL_FRAGMENT_SHADER ? GameConfiguration.glslFrag_CubeSamplerPrecision : GameConfiguration.glslVert_CubeSamplerPrecision) + " samplerCube;"
 			}));
 		}
+
+		sourceLines.add(0, GameConfiguration.glslVersion);
 		
 		source = StringUtils.join(sourceLines, '\n');
 		
