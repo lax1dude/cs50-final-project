@@ -1,6 +1,10 @@
 package net.eagtek.metaballs.client.renderer;
 
-import static org.lwjgl.opengles.GLES20.GL_TRIANGLES;
+import static org.lwjgl.opengles.GLES20.GL_COLOR_BUFFER_BIT;
+import static org.lwjgl.opengles.GLES20.glClear;
+import static org.lwjgl.opengles.GLES20.glClearColor;
+import static org.lwjgl.opengles.GLES20.glViewport;
+import static org.lwjgl.opengles.GLES30.*;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
@@ -10,6 +14,8 @@ import javax.imageio.ImageIO;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
+import net.eagtek.eagl.EaglFramebuffer;
+import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
 import net.eagtek.eagl.EaglImage2D;
 import net.eagtek.eagl.EaglIndexBuffer;
 import net.eagtek.eagl.EaglProgram;
@@ -17,6 +23,7 @@ import net.eagtek.eagl.EaglTessellator;
 import net.eagtek.eagl.EaglVertexArray;
 import net.eagtek.eagl.EaglVertexBuffer;
 import net.eagtek.eagl.GLDataType;
+import net.eagtek.eagl.GLStateManager;
 import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.metaballs.MathUtil;
 import net.eagtek.metaballs.client.GameClient;
@@ -31,10 +38,12 @@ public class GlobalRenderer {
 	public final Matrix4f viewProjMatrix = new Matrix4f();
 	public final Matrix4f multipliedMatrix = new Matrix4f();
 	
-	public ProgramManager progManager;
+	public final ProgramManager progManager;
 	
-	private EaglVertexArray quadArray;
-	private EaglImage2D testGraphic;
+	private final EaglVertexArray quadArray;
+	private final EaglImage2D testGraphic;
+	
+	private final EaglFramebuffer mainFramebuffer;
 	
 	public GlobalRenderer(GameClient gameClient) {
 		client = gameClient;
@@ -82,12 +91,25 @@ public class GlobalRenderer {
 			GameClient.log.error("Could not load test graphic", tt);
 		}
 		
+		//setup framebuffer ==================================================
+		
+		mainFramebuffer = (new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGB8));
+		
 	}
 	
 	public void renderGame() {
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
+		
+		mainFramebuffer.setSize(w, h, 8);
+		mainFramebuffer.bindFramebuffer();
+		
+		glViewport(0, 0, w, h);
+		
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		
 		projMatrix.setPerspective(100.0f * MathUtil.toRadians, (float)w / (float)h, 0.1f, 1024.0f);
 		cameraMatrix.identity()
 		.rotate(-(client.prevRenderPitch + (client.renderPitch - client.prevRenderPitch) * client.partialTicks) * MathUtil.toRadians, 1.0f, 0.0f, 0.0f)
@@ -98,13 +120,31 @@ public class GlobalRenderer {
 				(float)-(client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks)
 		);
 		cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
-
-		modelMatrix.identity();
+		
+		modelMatrix.clear();
 		modelMatrix.translate(0.0f, 0.0f, -5.0f);
 		
 		testGraphic.bind();
 		updateMatrix(progManager.p3f2f_texture);
 		progManager.p3f2f_texture.use();
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		GLStateManager.bindFramebuffer(0);
+
+		glViewport(0, 0, w, h);
+		
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		
+		projMatrix.identity();
+		cameraMatrix.identity();
+		viewProjMatrix.identity();
+		modelMatrix.clear();
+		
+		updateMatrix(progManager.p3f2f_texture);
+		progManager.p3f2f_texture.use();
+		mainFramebuffer.bindColorTexture(0);
+		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 	}

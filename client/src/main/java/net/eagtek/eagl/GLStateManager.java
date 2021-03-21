@@ -15,4 +15,10 @@ public class GLStateManager {
 	public static final void bindProgram(int prog) {
 		if(boundProgram != prog) glUseProgram(boundProgram = prog);
 	}
+	
+	private static int boundFramebuffer = -1;
+	
+	public static final void bindFramebuffer(int fbo) {
+		if(boundFramebuffer != fbo) glBindFramebuffer(GL_FRAMEBUFFER, boundFramebuffer = fbo);
+	}
 }

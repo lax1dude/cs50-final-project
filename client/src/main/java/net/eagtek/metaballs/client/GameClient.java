@@ -1,6 +1,6 @@
 package net.eagtek.metaballs.client;
 
-import static org.lwjgl.opengles.GLES30.*;
+//import static org.lwjgl.opengles.GLES30.*;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
@@ -39,7 +39,7 @@ public class GameClient {
 	public GameClient(boolean debug) {
 		debugMode = debug;
 		log.info("debug mode: {}", debug);
-		lastTick = System.currentTimeMillis();
+		lastTick = System.nanoTime();
 		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.vulkan, GameConfiguration.gameName);
 	}
 
@@ -125,14 +125,6 @@ public class GameClient {
 		
 		partialTicks = (float)((double)(System.nanoTime() - lastTick) / 50000000D);
 		totalTicksF = totalTicksI + partialTicks;
-		
-		int w = context.getInnerWidth();
-		int h = context.getInnerHeight();
-		
-		glViewport(0, 0, w, h);
-		
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
 		
 		globalRenderer.renderGame();
 		
