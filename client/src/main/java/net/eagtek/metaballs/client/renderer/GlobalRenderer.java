@@ -8,7 +8,6 @@ import java.util.Iterator;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import net.eagtek.eagl.EaglFramebuffer;
 import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
@@ -45,7 +44,7 @@ public class GlobalRenderer {
 
 	private final EaglFramebuffer gBuffer;
 	private final EaglFramebuffer lightBuffer;
-	private final EaglFramebuffer mainFramebuffer;
+	private final EaglFramebuffer combinedBuffer;
 	
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
@@ -100,14 +99,14 @@ public class GlobalRenderer {
 		
 		//gbuffer render targets
 		// 0 - diffuseRGB, ditherBlend
-		// 1 - metallic, roughness, fresnel, ssr
-		// 2 - normalXYZ, occlusion
+		// 1 - metallic, roughness, specular, ssr
+		// 2 - normalXYZ, emission
 		// 3 - position
 
 		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8, GL_RGB16F);
 		lightBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F, GL_RGB16F);
 		
-		mainFramebuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGB8);
+		combinedBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB8);
 		
 	}
 	
@@ -142,7 +141,7 @@ public class GlobalRenderer {
 			TerrainRenderer r = terrainRenderers.next();
 		}
 */
-		testModelRenderer.setMaterial(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.5f, 0.2f, 0.0f, 0.0f);
 		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
@@ -151,6 +150,11 @@ public class GlobalRenderer {
 		
 		lightBuffer.setSize(w, h);
 		lightBuffer.bindFramebuffer();
+		
+		projMatrix.identity();
+		cameraMatrix.identity();
+		viewProjMatrix.identity();
+		modelMatrix.clear();
 
 		glViewport(0, 0, w, h);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -158,14 +162,15 @@ public class GlobalRenderer {
 		glDisable(GL_DEPTH_TEST);
 		
 		progManager.light_sun.use();
+		updateMatrix(progManager.light_sun);
 		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
 		
 		Vector3f sunDir = new Vector3f(0.5f, 1.0f, 0.0f).normalize();
-		Vector4f lookDir = cameraMatrix.transform(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f)).normalize();
+		//Vector4f lookDir = cameraMatrix.transform(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f)).normalize();
 		
 		progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
 		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
-		progManager.light_sun_lookdirection.set3f(lookDir.x, lookDir.y, lookDir.z);
+		//progManager.light_sun_lookdirection.set3f(lookDir.x, lookDir.y, lookDir.z);
 		
 		gBuffer.bindColorTexture(1, 0);
 		gBuffer.bindColorTexture(2, 1);
@@ -177,28 +182,39 @@ public class GlobalRenderer {
 			LightData r = lightRenderers.next();
 		}
 		
-		
-		GLStateManager.bindFramebuffer(0);
+		combinedBuffer.setSize(w, h);
+		combinedBuffer.bindFramebuffer();
 
 		glViewport(0, 0, w, h);
-		
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		
 		glDisable(GL_DEPTH_TEST);
 		
-		projMatrix.identity();
-		cameraMatrix.identity();
-		viewProjMatrix.identity();
-		modelMatrix.clear();
-		
 		progManager.gbuffer_combined.use();
+		updateMatrix(progManager.gbuffer_combined);
 		gBuffer.bindColorTexture(0, 0);
 		gBuffer.bindColorTexture(1, 1);
 		gBuffer.bindColorTexture(2, 2);
 		gBuffer.bindColorTexture(3, 3);
 		lightBuffer.bindColorTexture(0, 4);
 		lightBuffer.bindColorTexture(1, 5);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		GLStateManager.bindFramebuffer(0);
+
+		glViewport(0, 0, w, h);
+		glDisable(GL_DEPTH_TEST);
+		
+		// Edge sharpness: 8.0 (sharp, default) - 2.0 (soft)
+	    // Edge threshold: 0.125 (softer, def) - 0.25 (sharper)
+	    // 0.06 (faster, dark alias), 0.05 (def), 0.04 (slower, less dark alias)
+		
+		progManager.post_fxaa.use();
+		updateMatrix(progManager.post_fxaa);
+		progManager.post_fxaa_edgeSharpness.set1f(8.0f);
+		progManager.post_fxaa_edgeThreshold.set1f(0.125f);
+		progManager.post_fxaa_edgeThresholdMin.set1f(0.04f);
+		progManager.post_fxaa_screenSize.set2f(w, h);
+		
+		combinedBuffer.bindColorTexture(0, 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		++framesPassed;

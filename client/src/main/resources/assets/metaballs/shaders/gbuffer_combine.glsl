@@ -48,7 +48,7 @@ void main() {
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
 	
-	vec3 color = (diffuseV.rgb * lightDiffuseV) + lightSpecularV; //
+	vec3 color = (diffuseV.rgb * lightDiffuseV) + lightSpecularV;
 	color = color / (color + vec3(1.0));
 	fragOut = vec4(pow(color, vec3(1.0/2.2)), 1.0);
 }

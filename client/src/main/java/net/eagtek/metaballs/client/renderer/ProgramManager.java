@@ -26,6 +26,12 @@ public class ProgramManager {
 	public EaglUniform light_sun_color;
 	public EaglUniform light_sun_direction;
 	public EaglUniform light_sun_lookdirection;
+
+	public EaglProgram post_fxaa;
+	public EaglUniform post_fxaa_screenSize;
+	public EaglUniform post_fxaa_edgeSharpness;
+	public EaglUniform post_fxaa_edgeThreshold;
+	public EaglUniform post_fxaa_edgeThresholdMin;
 	
 	public final GlobalRenderer renderer;
 	
@@ -81,6 +87,18 @@ public class ProgramManager {
 		light_sun_color = light_sun.getUniform("sunRGB");
 		light_sun_direction = light_sun.getUniform("sunDirection");
 		light_sun_lookdirection = light_sun.getUniform("lookDirection");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_fxaa.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_fxaa.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_fxaa.fsh");
+		this.post_fxaa = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		post_fxaa.getUniform("tex").set1i(0);
+		
+		this.post_fxaa_edgeSharpness = post_fxaa.getUniform("edgeSharpness");
+		this.post_fxaa_edgeThreshold = post_fxaa.getUniform("edgeThreshold");
+		this.post_fxaa_edgeThresholdMin = post_fxaa.getUniform("edgeThresholdMin");
+		this.post_fxaa_screenSize = post_fxaa.getUniform("screenSize");
 	}
 	
 	public ProgramManager(GlobalRenderer renderer) {
