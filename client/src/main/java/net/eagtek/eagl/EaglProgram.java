@@ -55,28 +55,34 @@ public class EaglProgram {
 			throw new IllegalArgumentException("Could not link program");
 		}
 		
-		this.matrix_m = getUniform("matrix_m");
-		this.matrix_v = getUniform("matrix_v");
-		this.matrix_p = getUniform("matrix_p");
+		this.matrix_m = getUniformOrNull("matrix_m");
+		this.matrix_v = getUniformOrNull("matrix_v");
+		this.matrix_p = getUniformOrNull("matrix_p");
 		
-		this.matrix_mvp = getUniform("matrix_mvp");
-		this.matrix_mv = getUniform("matrix_mv");
+		this.matrix_mvp = getUniformOrNull("matrix_mvp");
+		this.matrix_mv = getUniformOrNull("matrix_mv");
 
-		this.matrix_mvp_inv = getUniform("matrix_mvp_inv");
-		this.matrix_vp_inv = getUniform("matrix_mvp_inv");
-		this.matrix_p_inv = getUniform("matrix_p_inv");
+		this.matrix_mvp_inv = getUniformOrNull("matrix_mvp_inv");
+		this.matrix_vp_inv = getUniformOrNull("matrix_mvp_inv");
+		this.matrix_p_inv = getUniformOrNull("matrix_p_inv");
 
-		this.matrix_m_invtrans = getUniform("matrix_m_invtrans");
-		this.matrix_mv_invtrans = getUniform("matrix_mv_invtrans");
+		this.matrix_m_invtrans = getUniformOrNull("matrix_m_invtrans");
+		this.matrix_mv_invtrans = getUniformOrNull("matrix_mv_invtrans");
 
-		this.shadowmatrix_near = getUniform("shadowmatrix_near");
-		this.shadowmatrix_far = getUniform("shadowmatrix_far");
+		this.shadowmatrix_near = getUniformOrNull("shadowmatrix_near");
+		this.shadowmatrix_far = getUniformOrNull("shadowmatrix_far");
 		
-		this.shadowblur_near = getUniform("shadowblur_near");
+		this.shadowblur_near = getUniformOrNull("shadowblur_near");
 		
 		return this;
 	}
 	
+	private EaglUniform getUniformOrNull(String string) {
+		EaglUniform e = getUniform(string);
+		if(e.glObject == -1) return null;
+		return e;
+	}
+
 	public void destroy() {
 		if(!destroyed) {
 			glDeleteProgram(glObject);
@@ -96,12 +102,8 @@ public class EaglProgram {
 		EaglUniform e = uniforms.get(name);
 		if(e == null) {
 			int u = glGetUniformLocation(glObject, name);
-			if(u == -1) {
-				e = null;
-			}else {
-				e = new EaglUniform(u, this);
-				uniforms.put(name, e);
-			}
+			e = new EaglUniform(u, this);
+			uniforms.put(name, e);
 		}
 		return e;
 	}

@@ -3,16 +3,33 @@ package net.eagtek.eagl;
 import static org.lwjgl.opengles.GLES30.*;
 
 import java.awt.image.BufferedImage;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import javax.imageio.ImageIO;
+
 import org.lwjgl.opengles.EXTTextureFilterAnisotropic;
-import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
+
+import net.eagtek.metaballs.client.GameClient;
 
 public class EaglImage2D {
 	
 	public final int glObject;
 	
 	private boolean destroyed = false;
+	
+	public static EaglImage2D consumeStream(InputStream stream) {
+		if(stream == null) return null;
+		try {
+			BufferedImage icon = ImageIO.read(stream);
+			stream.close();
+			return (new EaglImage2D()).uploadRGB(icon);
+		}catch(Throwable tt) {
+			GameClient.log.error("Could not load graphic", tt);
+			return null;
+		}
+	}
 	
 	public EaglImage2D() {
 		this.glObject = glGenTextures();
@@ -23,25 +40,27 @@ public class EaglImage2D {
 	
 	
 	public EaglImage2D uploadRGB(BufferedImage img, int x, int y, int w, int h) {
-		try(MemoryStack m = MemoryStack.stackPush()) {
-			
-			ByteBuffer imgBuf = m.malloc(w * h * 3);
-			int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
+		
+		ByteBuffer imgBuf = MemoryUtil.memAlloc(w * h * 3);
+		
+		int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
 
-			for(int y2 = 0; y2 < h; ++y2) {
-				for(int x2 = 0; x2 < w; ++x2) {
-					int idx = (h - y2 - 1) * w + x2;
-					imgBuf.put((byte)(pixels[idx] >> 16));
-					imgBuf.put((byte)(pixels[idx] >> 8));
-					imgBuf.put((byte)(pixels[idx]));
-				}
+		for(int y2 = 0; y2 < h; ++y2) {
+			for(int x2 = 0; x2 < w; ++x2) {
+				int idx = (h - y2 - 1) * w + x2;
+				imgBuf.put((byte)(pixels[idx] >> 16));
+				imgBuf.put((byte)(pixels[idx] >> 8));
+				imgBuf.put((byte)(pixels[idx]));
 			}
-			
-			imgBuf.flip();
-
-			GLStateManager.bindTexture2D(glObject);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBuf);
 		}
+		
+		imgBuf.flip();
+
+		GLStateManager.bindTexture2D(glObject);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBuf);
+		
+		MemoryUtil.memFree(imgBuf);
+		
 		return this;
 	}
 	
@@ -51,27 +70,28 @@ public class EaglImage2D {
 	
 	
 	public EaglImage2D uploadRGBA(BufferedImage img, int x, int y, int w, int h) {
-		try(MemoryStack m = MemoryStack.stackPush()) {
-			
-			ByteBuffer imgBuf = m.malloc(w * h * 4);
-			int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
-			
-			for(int y2 = 0; y2 < h; ++y2) {
-				for(int x2 = 0; x2 < w; ++x2) {
-					int idx = (h - y2 - 1) * w + x2;
-					int alpha = (pixels[idx] >> 24) & 0xFF;
-					imgBuf.put((byte)(((pixels[idx] >> 16) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)(((pixels[idx] >> 8) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)(((pixels[idx]) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)alpha);
-				}
+		
+		ByteBuffer imgBuf = MemoryUtil.memAlloc(w * h * 4);
+		int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
+		
+		for(int y2 = 0; y2 < h; ++y2) {
+			for(int x2 = 0; x2 < w; ++x2) {
+				int idx = (h - y2 - 1) * w + x2;
+				int alpha = (pixels[idx] >> 24) & 0xFF;
+				imgBuf.put((byte)(((pixels[idx] >> 16) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)(((pixels[idx] >> 8) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)(((pixels[idx]) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)alpha);
 			}
-			
-			imgBuf.flip();
-
-			GLStateManager.bindTexture2D(glObject);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBuf);
 		}
+		
+		imgBuf.flip();
+
+		GLStateManager.bindTexture2D(glObject);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBuf);
+		
+		MemoryUtil.memFree(imgBuf);
+			
 		return this;
 	}
 	
@@ -81,25 +101,25 @@ public class EaglImage2D {
 	
 	
 	public EaglImage2D uploadRGBSub(BufferedImage img, int x, int y, int w, int h, int dx, int dy) {
-		try(MemoryStack m = MemoryStack.stackPush()) {
-			
-			ByteBuffer imgBuf = m.malloc(w * h * 3);
-			int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
-			
-			for(int y2 = 0; y2 < h; ++y2) {
-				for(int x2 = 0; x2 < w; ++x2) {
-					int idx = (h - y2 - 1) * w + x2;
-					imgBuf.put((byte)(pixels[idx] >> 16));
-					imgBuf.put((byte)(pixels[idx] >> 8));
-					imgBuf.put((byte)(pixels[idx]));
-				}
+		ByteBuffer imgBuf = MemoryUtil.memAlloc(w * h * 3);
+		int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
+		
+		for(int y2 = 0; y2 < h; ++y2) {
+			for(int x2 = 0; x2 < w; ++x2) {
+				int idx = (h - y2 - 1) * w + x2;
+				imgBuf.put((byte)(pixels[idx] >> 16));
+				imgBuf.put((byte)(pixels[idx] >> 8));
+				imgBuf.put((byte)(pixels[idx]));
 			}
-			
-			imgBuf.flip();
-
-			GLStateManager.bindTexture2D(glObject);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h, GL_RGB, GL_UNSIGNED_BYTE, imgBuf);
 		}
+		
+		imgBuf.flip();
+
+		GLStateManager.bindTexture2D(glObject);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h, GL_RGB, GL_UNSIGNED_BYTE, imgBuf);
+
+		MemoryUtil.memFree(imgBuf);
+		
 		return this;
 	}
 	
@@ -109,27 +129,27 @@ public class EaglImage2D {
 	
 	
 	public EaglImage2D uploadRGBASub(BufferedImage img, int x, int y, int w, int h, int dx, int dy) {
-		try(MemoryStack m = MemoryStack.stackPush()) {
-			
-			ByteBuffer imgBuf = m.malloc(w * h * 3);
-			int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
-			
-			for(int y2 = 0; y2 < h; ++y2) {
-				for(int x2 = 0; x2 < w; ++x2) {
-					int idx = (h - y2 - 1) * w + x2;
-					int alpha = (pixels[idx] >> 24) & 0xFF;
-					imgBuf.put((byte)(((pixels[idx] >> 16) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)(((pixels[idx] >> 8) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)(((pixels[idx]) & 0xFF) * alpha / 256));
-					imgBuf.put((byte)alpha);
-				}
+		ByteBuffer imgBuf = MemoryUtil.memAlloc(w * h * 3);
+		int[] pixels = img.getRGB(x, y, w, h, null, 0, w);
+		
+		for(int y2 = 0; y2 < h; ++y2) {
+			for(int x2 = 0; x2 < w; ++x2) {
+				int idx = (h - y2 - 1) * w + x2;
+				int alpha = (pixels[idx] >> 24) & 0xFF;
+				imgBuf.put((byte)(((pixels[idx] >> 16) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)(((pixels[idx] >> 8) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)(((pixels[idx]) & 0xFF) * alpha / 256));
+				imgBuf.put((byte)alpha);
 			}
-			
-			imgBuf.flip();
-
-			GLStateManager.bindTexture2D(glObject);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h, GL_RGBA, GL_UNSIGNED_BYTE, imgBuf);
 		}
+		
+		imgBuf.flip();
+
+		GLStateManager.bindTexture2D(glObject);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h, GL_RGBA, GL_UNSIGNED_BYTE, imgBuf);
+
+		MemoryUtil.memFree(imgBuf);
+		
 		return this;
 	}
 	
@@ -169,6 +189,11 @@ public class EaglImage2D {
 	
 	public EaglImage2D bind() {
 		GLStateManager.bindTexture2D(glObject);
+		return this;
+	}
+	
+	public EaglImage2D bind(int textureUnit) {
+		GLStateManager.bindTexture2D(glObject, textureUnit);
 		return this;
 	}
 	

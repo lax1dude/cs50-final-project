@@ -31,7 +31,7 @@ public class OldMetaballs {
 	public static void main(String[] args) throws IOException {
 		log.info("Starting Metaballs Demo...");
 		
-		EaglContext ctx = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.opengl, "Metaballs");
+		EaglContext ctx = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.opengl, "Metaballs", 1);
 		ctx.create();
 		
 		InputStream stream;

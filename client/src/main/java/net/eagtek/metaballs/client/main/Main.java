@@ -1,10 +1,14 @@
 package net.eagtek.metaballs.client.main;
 
+import java.io.File;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import joptsimple.OptionSpec;
+import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.metaballs.client.GameClient;
 import net.eagtek.metaballs.client.GameConfiguration;
 
@@ -27,8 +31,15 @@ public class Main {
 		
 		OptionParser optionparser = new OptionParser();
 		optionparser.accepts("debug");
+		OptionSpec<File> assets = optionparser.accepts("dev-assets").withOptionalArg().ofType(File.class);
 		
 		cmdOpts = optionparser.parse(cmdArgs);
+		
+		if(cmdOpts.has(assets)) {
+			File f = assets.value(cmdOpts).getAbsoluteFile();
+			ResourceLoader.registerLoader(new ResourceLoader.ResourceLoaderFolder(f));
+			log.info("Additional assets directory: {}", f.getAbsolutePath());
+		}
 		
 		GameClient.instance.run();
 	}

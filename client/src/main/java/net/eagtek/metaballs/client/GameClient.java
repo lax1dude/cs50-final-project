@@ -18,6 +18,7 @@ import net.eagtek.eagl.EaglContext.ToolkitPlatform;
 import net.eagtek.metaballs.MathUtil;
 import net.eagtek.metaballs.client.main.Main;
 import net.eagtek.metaballs.client.renderer.GlobalRenderer;
+import net.eagtek.metaballs.client.renderer.RenderScene;
 
 public class GameClient {
 	
@@ -31,6 +32,7 @@ public class GameClient {
 	public final EaglContext context;
 	
 	private GlobalRenderer globalRenderer = null;
+	private RenderScene scene = null;
 
 	public float partialTicks = 0.0f;
 	public float totalTicksF = 0.0f;
@@ -40,7 +42,7 @@ public class GameClient {
 		debugMode = debug;
 		log.info("debug mode: {}", debug);
 		lastTick = System.nanoTime();
-		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.vulkan, GameConfiguration.gameName);
+		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.opengl, GameConfiguration.gameName, 2);
 	}
 
 	public void run() {
@@ -95,6 +97,7 @@ public class GameClient {
 			log.error("Could not load icons!", t);
 		}
 		
+		scene = new RenderScene();
 		globalRenderer = new GlobalRenderer(this);
 
 		int w = context.getInnerWidth();
@@ -126,7 +129,7 @@ public class GameClient {
 		partialTicks = (float)((double)(System.nanoTime() - lastTick) / 50000000D);
 		totalTicksF = totalTicksI + partialTicks;
 		
-		globalRenderer.renderGame();
+		if(!context.contextLost()) globalRenderer.renderGame(scene);
 		
 		context.swapBuffers(false);
 		
@@ -174,6 +177,9 @@ public class GameClient {
 					context.setMouseGrabbed(isMouseGrabbed);
 				}else if(e.code == context.KEY_ESCAPE) {
 					shutdownGame();
+				}else if(e.code == context.KEY_F1) {
+					globalRenderer.progManager.destroy();
+					globalRenderer.progManager.refresh();
 				}
 			}
 		}
@@ -245,5 +251,9 @@ public class GameClient {
 	private void cleanup() {
 		globalRenderer.destory();
 		context.destroy();
+	}
+
+	public RenderScene getScene() {
+		return scene;
 	}
 }

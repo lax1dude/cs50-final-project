@@ -3,8 +3,10 @@ package net.eagtek.eagl;
 import static org.lwjgl.opengles.GLES30.*;
 
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 import org.lwjgl.opengles.EXTMultisampledRenderToTexture;
+import org.lwjgl.system.MemoryStack;
 
 public class EaglFramebuffer {
 	
@@ -32,7 +34,7 @@ public class EaglFramebuffer {
 		}
 	}
 
-	public final int glObject;
+	public int glObject = -1;
 	public final int[] colorAttachments;
 	public final int[] colorAttachmentTypes;
 	public final int depthBuffer;
@@ -44,7 +46,7 @@ public class EaglFramebuffer {
 	private int h = 0;
 
 	public EaglFramebuffer(DepthBufferType depthStencil, int... targets) {
-		this.glObject = glGenFramebuffers();
+		//this.glObject = glGenFramebuffers();
 		depthBufferType = depthStencil;
 		
 		if(depthStencil == DepthBufferType.NONE) {
@@ -60,8 +62,21 @@ public class EaglFramebuffer {
 		glGenTextures(colorAttachments);
 	}
 	
+	public EaglFramebuffer linearTex() {
+		for(int i = 0; i < colorAttachmentTypes.length; ++i) {
+			GLStateManager.bindTexture2D(colorAttachments[i]);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+		}
+		return this;
+	}
+	
 	public EaglFramebuffer setSize(int w, int h, int samples) {
 		if(this.w != w || this.h != h || this.samples != samples) {
+			
+			if(glObject != -1) glDeleteFramebuffers(glObject);
+			glObject = glGenFramebuffers();
+		
 			this.w = w;
 			this.h = h;
 			this.samples = samples;
@@ -69,11 +84,20 @@ public class EaglFramebuffer {
 			GLStateManager.bindFramebuffer(glObject);
 			
 			if(samples > 1) {
+				for(int i = 0; i < colorAttachmentTypes.length; ++i) {
+					GLStateManager.bindTexture2D(colorAttachments[i]);
+					glTexImage2D(GL_TEXTURE_2D, 0, colorAttachmentTypes[i], w, h, 0, getFormat(colorAttachmentTypes[i]), getDataType(colorAttachmentTypes[i]), (ByteBuffer)null);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0, samples);
+				}
 				if(depthBuffer != -1) {
 					if(depthBufferType.rbo){
 						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-						glRenderbufferStorage(GL_RENDERBUFFER, depthBufferType.glEnumA, w, h);
-						EXTMultisampledRenderToTexture.glRenderbufferStorageMultisampleEXT(GL_FRAMEBUFFER, samples, depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer);
+						EXTMultisampledRenderToTexture.glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, samples, depthBufferType.glEnumA, w, h);
+						glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer);
 					}else {
 						GLStateManager.bindTexture2D(depthBuffer);
 						glTexImage2D(GL_TEXTURE_2D, 0, depthBufferType.glEnumA, w, h, 0, depthBufferType.glEnumB, depthBufferType.glEnumC, (ByteBuffer)null);
@@ -84,7 +108,7 @@ public class EaglFramebuffer {
 						EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer, 0, samples);
 					}
 				}
-				
+			}else {
 				for(int i = 0; i < colorAttachmentTypes.length; ++i) {
 					GLStateManager.bindTexture2D(colorAttachments[i]);
 					glTexImage2D(GL_TEXTURE_2D, 0, colorAttachmentTypes[i], w, h, 0, getFormat(colorAttachmentTypes[i]), getDataType(colorAttachmentTypes[i]), (ByteBuffer)null);
@@ -92,9 +116,8 @@ public class EaglFramebuffer {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-					EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0, samples);
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0);
 				}
-			}else {
 				if(depthBuffer != -1) {
 					if(depthBufferType.rbo){
 						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
@@ -110,16 +133,6 @@ public class EaglFramebuffer {
 						glFramebufferTexture2D(GL_FRAMEBUFFER, depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer, 0);
 					}
 				}
-				
-				for(int i = 0; i < colorAttachmentTypes.length; ++i) {
-					GLStateManager.bindTexture2D(colorAttachments[i]);
-					glTexImage2D(GL_TEXTURE_2D, 0, colorAttachmentTypes[i], w, h, 0, getFormat(colorAttachmentTypes[i]), getDataType(colorAttachmentTypes[i]), (ByteBuffer)null);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0);
-				}
 			}
 		}
 		
@@ -130,16 +143,32 @@ public class EaglFramebuffer {
 	
 	public void bindFramebuffer() {
 		GLStateManager.bindFramebuffer(glObject);
-	}
-	
-	public void bindDepthTexture() {
-		if(depthBufferType.rbo == false) {
-			GLStateManager.bindTexture2D(depthBuffer);
+		try(MemoryStack s = MemoryStack.stackPush()) {
+			IntBuffer up = s.mallocInt(colorAttachments.length);
+			for(int i = 0; i < colorAttachments.length; ++i) {
+				up.put(GL_COLOR_ATTACHMENT0 + i);
+			}
+			up.flip();
+			glDrawBuffers(up);
 		}
 	}
 	
+	public void bindDepthTexture(int textureUnit) {
+		if(depthBufferType.rbo == false) {
+			GLStateManager.bindTexture2D(depthBuffer, textureUnit);
+		}
+	}
+	
+	public void bindColorTexture(int slot, int textureUnit) {
+		GLStateManager.bindTexture2D(colorAttachments[slot], textureUnit);
+	}
+	
+	public void bindDepthTexture() {
+		bindDepthTexture(0);
+	}
+	
 	public void bindColorTexture(int slot) {
-		GLStateManager.bindTexture2D(colorAttachments[slot]);
+		bindColorTexture(slot, 0);
 	}
 
 	public static int getFormat(int internalFormat) {
@@ -240,6 +269,10 @@ public class EaglFramebuffer {
 		case GL_RGBA32UI: return GL_UNSIGNED_INT;
 		default: return GL_UNSIGNED_BYTE;
 		}
+	}
+
+	public EaglFramebuffer setSize(int w, int h) {
+		return setSize(w, h, 1);
 	}
 	
 }

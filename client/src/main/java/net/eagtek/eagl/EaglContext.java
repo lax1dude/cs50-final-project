@@ -3,9 +3,11 @@ package net.eagtek.eagl;
 import org.lwjgl.glfw.GLFWCharCallbackI;
 import org.lwjgl.glfw.GLFWCursorPosCallbackI;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWFramebufferSizeCallbackI;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWKeyCallbackI;
 import org.lwjgl.glfw.GLFWMouseButtonCallbackI;
+import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.glfw.GLFWWindowFocusCallbackI;
 import org.lwjgl.glfw.GLFWImage.Buffer;
 import org.lwjgl.opengles.GLDebugMessageKHRCallback;
@@ -30,6 +32,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.LinkedList;
 
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.egl.EGL;
 
 
@@ -68,6 +71,9 @@ public class EaglContext {
 	public final ToolkitPlatform toolkit;
 	public final ContextPlatform platform;
 	private String title;
+	public final boolean windowed;
+	public final int resolutionDiv;
+	private int monitorNum;
 
 	private long glfw_windowHandle = 0l;
 	private long glfw_eglHandle = 0l;
@@ -78,10 +84,25 @@ public class EaglContext {
 		return caps;
 	}
 	
-	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title) {
+	public boolean contextLost() {
+		return glfwGetWindowAttrib(glfw_windowHandle, GLFW_ICONIFIED) == GLFW_TRUE;
+	}
+
+	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, int resolutionDiv) {
+		this(toolkit, platform, title, true, resolutionDiv, 0);
+	}
+	
+	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, int monitorNum, int resolutionDiv) {
+		this(toolkit, platform, title, false, resolutionDiv, monitorNum);
+	}
+	
+	private EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, boolean windowed, int resolutionDiv, int monitorNum) {
 		this.toolkit = toolkit;
 		this.platform = platform;
 		this.title = title;
+		this.windowed = windowed;
+		this.resolutionDiv = resolutionDiv;
+		this.monitorNum = monitorNum;
 		
 		if(toolkit == ToolkitPlatform.desktop) {
 			KEY_SPACE = 32;
@@ -375,7 +396,7 @@ public class EaglContext {
 				for(int i = 0; i < ex.length; ++i) {
 					log.error("    at {}", ex[i]);
 				}
-				log.error("");
+				//throw new RuntimeException();
 			}
 			
 		}, 0l);
@@ -415,22 +436,40 @@ public class EaglContext {
 		GLFWErrorCallback.createThrow().set();
 		
 		glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, platform.eglEnum);
-		
 		glfwInit();
 		
 		log.info("GLFW Version: {}", glfwGetVersionString());
 		
+		PointerBuffer buf = glfwGetMonitors();
+		
+		if(monitorNum > buf.limit() - 1) {
+			monitorNum = buf.limit() - 1;
+		}
+		
+		GLFWVidMode v = glfwGetVideoMode(buf.get(monitorNum));
+
+		int w = v.width() / resolutionDiv;
+		int h = v.height() / resolutionDiv;
+
+		int x = (v.width() - w) / 2;
+		int y = (v.height() - h) / 2;
+		
 		glfwDefaultWindowHints();
 		glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
-		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-        
-        glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-        
-        glfw_windowHandle = glfwCreateWindow(854, 480, title, NULL, NULL);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+		glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+		glfwWindowHint(GLFW_CENTER_CURSOR, GLFW_TRUE);
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+		
+        glfw_windowHandle = glfwCreateWindow(w, h, title, windowed ? NULL : buf.get(monitorNum), NULL);
         glfw_eglHandle = glfwGetEGLDisplay();
+        
+        if(!windowed) glfwSetWindowPos(glfw_windowHandle, x, y);
         
         int[] major = new int[] { 1 };
         int[] minor = new int[] { 4 };

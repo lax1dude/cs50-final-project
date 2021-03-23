@@ -34,6 +34,8 @@ public class EaglVertexArray {
 	public final VertexAttribPointer[] pointers;
 	public final EaglIndexBuffer indexBuffer;
 	private boolean destroyed = false;
+		
+	public int vertexes = 0;
 	
 	public final int glObject;
 	
@@ -43,11 +45,12 @@ public class EaglVertexArray {
 		indexBuffer = indexBufferv;
 		glObject = glGenVertexArrays();
 		
-		glBindVertexArray(glObject);
+		GLStateManager.bindVertexArray(glObject);
 		
 		for(int i = 0; i < pointersv.length; ++i) {
 			VertexAttribPointer ptr = pointersv[i];
 			glBindBuffer(GL_ARRAY_BUFFER, buffersv[ptr.bufferNumber].glObject);
+			glEnableVertexAttribArray(ptr.indexNumber);
 			glVertexAttribPointer(ptr.indexNumber, ptr.componentCount, ptr.datatype.glEnum, ptr.normalize, ptr.strideBytes, ptr.startByte);
 		}
 		
@@ -60,26 +63,8 @@ public class EaglVertexArray {
 		this(buffersv, pointersv, null);
 	}
 	
-	public static int enabledVertexAttribArrays = 0;
-	
-	public static void setEnabledAttribArrays(int num) {
-		if(enabledVertexAttribArrays != num) {
-			if(enabledVertexAttribArrays > num) {
-				for(int i = num; i < enabledVertexAttribArrays; ++i) {
-					glDisableVertexAttribArray(i);
-				}
-			}else {
-				for(int i = enabledVertexAttribArrays; i < num; ++i) {
-					glEnableVertexAttribArray(i);
-				}
-			}
-			enabledVertexAttribArrays = num;
-		}
-	}
-	
 	public void draw(int drawMode, int start, int len) {
-		
-		setEnabledAttribArrays(pointers.length);
+		GLStateManager.bindVertexArray(glObject);
 		
 		if(indexBuffer != null) {
 			glDrawElements(drawMode, len, indexBuffer.indexType.glEnum, start * indexBuffer.indexType.bytesUsed);
@@ -91,25 +76,34 @@ public class EaglVertexArray {
 	
 	
 	public void drawAll(int drawMode) {
-
-		setEnabledAttribArrays(pointers.length);
+		GLStateManager.bindVertexArray(glObject);
 		
 		if(indexBuffer != null) {
 			glDrawElements(drawMode, indexBuffer.getIndiciesCount(), indexBuffer.indexType.glEnum, 0);
 		}else {
-			throw new IllegalArgumentException("drawAll is for VAOs with index buffers");
+			glDrawArrays(drawMode, 0, vertexes);
 		}
 		
 	}
 	
 	public void drawInstanced(int drawMode, int start, int len, int instances) {
-
-		setEnabledAttribArrays(pointers.length);
+		GLStateManager.bindVertexArray(glObject);
 		
 		if(indexBuffer != null) {
 			glDrawElementsInstanced(drawMode, len, indexBuffer.indexType.glEnum, start * indexBuffer.indexType.bytesUsed, instances);
 		}else {
 			glDrawArraysInstanced(drawMode, start, len, instances);
+		}
+		
+	}
+	
+	public void drawAllInstanced(int drawMode, int instances) {
+		GLStateManager.bindVertexArray(glObject);
+		
+		if(indexBuffer != null) {
+			glDrawElementsInstanced(drawMode, indexBuffer.getIndiciesCount(), indexBuffer.indexType.glEnum, 0, instances);
+		}else {
+			glDrawArraysInstanced(drawMode, 0, vertexes, instances);
 		}
 		
 	}
