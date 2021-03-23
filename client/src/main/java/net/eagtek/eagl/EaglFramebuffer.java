@@ -17,7 +17,8 @@ public class EaglFramebuffer {
 		DEPTH24_RENDERBUFFER(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, GL_DEPTH_ATTACHMENT, true),
 		DEPTH24_TEXTURE(GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, GL_DEPTH_ATTACHMENT, false),
 		DEPTH24_STENCIL8_RENDERBUFFER(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH_STENCIL_ATTACHMENT, true),
-		DEPTH24_STENCIL8_TEXTURE(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH_STENCIL_ATTACHMENT, false);
+		DEPTH24_STENCIL8_TEXTURE(GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH_STENCIL_ATTACHMENT, false),
+		STENCIL8_RENDERBUFFER(GL_STENCIL_INDEX8, GL_STENCIL, GL_UNSIGNED_BYTE, GL_STENCIL_ATTACHMENT, true);
 
 		protected final int glEnumA;
 		protected final int glEnumB;
@@ -34,7 +35,7 @@ public class EaglFramebuffer {
 		}
 	}
 
-	public int glObject = -1;
+	public final int glObject;
 	public final int[] colorAttachments;
 	public final int[] colorAttachmentTypes;
 	public final int depthBuffer;
@@ -46,7 +47,7 @@ public class EaglFramebuffer {
 	private int h = 0;
 
 	public EaglFramebuffer(DepthBufferType depthStencil, int... targets) {
-		//this.glObject = glGenFramebuffers();
+		this.glObject = glGenFramebuffers();
 		depthBufferType = depthStencil;
 		
 		if(depthStencil == DepthBufferType.NONE) {
@@ -74,8 +75,8 @@ public class EaglFramebuffer {
 	public EaglFramebuffer setSize(int w, int h, int samples) {
 		if(this.w != w || this.h != h || this.samples != samples) {
 			
-			if(glObject != -1) glDeleteFramebuffers(glObject);
-			glObject = glGenFramebuffers();
+			//if(glObject != -1) glDeleteFramebuffers(glObject);
+			//glObject = glGenFramebuffers();
 		
 			this.w = w;
 			this.h = h;

@@ -81,7 +81,7 @@ void main() {
 	vec3 F0 = vec3(0.04);
 	F0 = mix(F0, vec3(1.0), materialV.r);
 	
-	vec3 L = sunDirection;
+	vec3 L = normalize(sunDirection * 100.0 + V);
 	vec3 H = normalize(V + L);
 	
 	float roughness = materialV.g;

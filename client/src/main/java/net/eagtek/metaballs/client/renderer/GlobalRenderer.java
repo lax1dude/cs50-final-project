@@ -104,9 +104,9 @@ public class GlobalRenderer {
 		// 3 - position
 
 		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8, GL_RGB16F);
-		lightBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F, GL_RGB16F);
+		lightBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_RENDERBUFFER, GL_RGB16F, GL_RGB16F);
 		
-		combinedBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB8);
+		combinedBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_RENDERBUFFER, GL_RGB8);
 		
 	}
 	
@@ -122,9 +122,15 @@ public class GlobalRenderer {
 		
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClearDepthf(0.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glStencilMask(0xFF);
+		glClearStencil(0x00);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		
+		glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 		
 		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_STENCIL_TEST);
 		glDepthFunc(GL_GREATER);
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(100.0f * MathUtil.toRadians, (float)w / (float)h, 0.1f, 1024.0f);
@@ -141,14 +147,17 @@ public class GlobalRenderer {
 			TerrainRenderer r = terrainRenderers.next();
 		}
 */
-		testModelRenderer.setMaterial(0.0f, 0.0f, 0.5f, 0.2f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.4f, 0.2f, 0.0f, 0.0f);
 		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
 			r.renderGBuffer(this);
 		}
-		
+
 		lightBuffer.setSize(w, h);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.glObject);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, lightBuffer.glObject);
+		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 		lightBuffer.bindFramebuffer();
 		
 		projMatrix.identity();
@@ -160,6 +169,11 @@ public class GlobalRenderer {
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
+
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0xFF);
+		glStencilFunc(GL_EQUAL, 0, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		
 		progManager.light_sun.use();
 		updateMatrix(progManager.light_sun);
@@ -181,12 +195,20 @@ public class GlobalRenderer {
 		while(lightRenderers.hasNext()) {
 			LightData r = lightRenderers.next();
 		}
-		
-		combinedBuffer.setSize(w, h);
-		combinedBuffer.bindFramebuffer();
 
+		combinedBuffer.setSize(w, h);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.glObject);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, combinedBuffer.glObject);
+		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		combinedBuffer.bindFramebuffer();
+		
 		glViewport(0, 0, w, h);
 		glDisable(GL_DEPTH_TEST);
+		
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0x0);
+		glStencilFunc(GL_EQUAL, 0, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		
 		progManager.gbuffer_combined.use();
 		updateMatrix(progManager.gbuffer_combined);
@@ -202,6 +224,8 @@ public class GlobalRenderer {
 
 		glViewport(0, 0, w, h);
 		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_STENCIL_TEST);
+		glStencilMask(0x0);
 		
 		// Edge sharpness: 8.0 (sharp, default) - 2.0 (soft)
 	    // Edge threshold: 0.125 (softer, def) - 0.25 (sharper)
