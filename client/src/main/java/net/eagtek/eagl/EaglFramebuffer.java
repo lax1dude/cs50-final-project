@@ -41,6 +41,8 @@ public class EaglFramebuffer {
 	public final int depthBuffer;
 	public final DepthBufferType depthBufferType;
 	
+	private boolean destroyed = false;
+	
 	int samples = 1;
 	
 	private int w = 0;
@@ -274,6 +276,28 @@ public class EaglFramebuffer {
 
 	public EaglFramebuffer setSize(int w, int h) {
 		return setSize(w, h, 1);
+	}
+	
+	public void destroy() {
+		if(!destroyed) {
+			glDeleteFramebuffers(glObject);
+			glDeleteTextures(colorAttachments);
+			if(this.depthBufferType != null && this.depthBufferType != DepthBufferType.NONE) {
+				if(this.depthBufferType.rbo) {
+					glDeleteRenderbuffers(depthBuffer);
+				}else {
+					glDeleteTextures(depthBuffer);
+				}
+			}
+			destroyed = true;
+		}
+	}
+	
+	public void finalize() {
+		if(!destroyed) {
+			EaglContext.log.warn("GL Framebuffer #{} leaked memory", glObject);
+			destroy();
+		}
 	}
 	
 }

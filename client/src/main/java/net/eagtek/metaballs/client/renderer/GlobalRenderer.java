@@ -4,6 +4,7 @@ import static org.lwjgl.opengles.GLES30.*;
 
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.Random;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
@@ -22,15 +23,16 @@ import net.eagtek.eagl.GLStateManager;
 import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.metaballs.MathUtil;
 import net.eagtek.metaballs.client.GameClient;
+import net.eagtek.metaballs.client.renderer.LightData.LightType;
 
 public class GlobalRenderer {
 	
 	public final GameClient client;
 
 	public final Matrix4fStack modelMatrix = new Matrix4fStack(64);
-	public final Matrix4f cameraMatrix = new Matrix4f();
-	public final Matrix4f projMatrix = new Matrix4f();
-	public final Matrix4f viewProjMatrix = new Matrix4f();
+	public final Matrix4fStack cameraMatrix = new Matrix4fStack(4);
+	public final Matrix4fStack projMatrix = new Matrix4fStack(4);
+	public final Matrix4fStack viewProjMatrix = new Matrix4fStack(4);
 	public final Matrix4f multipliedMatrix = new Matrix4f();
 	
 	public final ProgramManager progManager;
@@ -42,6 +44,11 @@ public class GlobalRenderer {
 	private ModelRenderer testModelRenderer = null;
 	private final EaglImage2D testModelTexture;
 
+	private EaglVertexArray lightSphere = null;
+	private EaglVertexArray lightCone = null;
+	
+	private LightData lightTest = null;
+
 	private final EaglFramebuffer gBuffer;
 	private final EaglFramebuffer lightBuffer;
 	private final EaglFramebuffer combinedBuffer;
@@ -49,6 +56,10 @@ public class GlobalRenderer {
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
 	private int prevFramesPassed = 0;
+
+	public double renderPosX;
+	public double renderPosY;
+	public double renderPosZ;
 	
 	public int getFramerate() {
 		return prevFramesPassed;
@@ -80,11 +91,21 @@ public class GlobalRenderer {
 		
 		try {
 			InputStream stream;
+
 			stream = ResourceLoader.loadResource("metaballs/models/testscene.mdl");
 			testModel = EaglModelLoader.loadModel(stream);
 			stream.close();
+			
+			stream = ResourceLoader.loadResource("metaballs/models/lightcone.mdl");
+			lightCone = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			stream = ResourceLoader.loadResource("metaballs/models/lightsphere.mdl");
+			lightSphere = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
 		}catch(Throwable tt) {
-			GameClient.log.error("Could not load test graphic", tt);
+			throw new RuntimeException("Could not load model files required for rendering", tt);
 		}
 		
 		//setup test texture ==================================================
@@ -94,6 +115,12 @@ public class GlobalRenderer {
 		
 		client.getScene().objectRenderers.add(testModelRenderer = new ModelRenderer(testModel, testModelTexture.glObject).setMaterial(0.0f, 0.0f, 0.5f, 0.5f, 0.0f, 0.0f));
 		client.getScene().sunDirection = new Vector3f(1.0f, -1.0f, 0.0f).normalize();
+		client.getScene().lightRenderers.add(lightTest = new LightData(LightType.POINT, 5.0f, 0.0f, 0.0d, 1.0d, 0.0d));
+		
+		Random r = new Random();
+		for(int i = 0 ; i < 100; ++i) {
+			client.getScene().lightRenderers.add(new LightData(LightType.POINT, r.nextInt(200), 0.0f, r.nextGaussian() * 20.0d, r.nextGaussian() * 3.0d + 4.0d, r.nextGaussian() * 20.0d).setRGB(r.nextFloat(), r.nextFloat(), r.nextFloat()));
+		}
 		
 		//setup framebuffer ==================================================
 		
@@ -111,6 +138,9 @@ public class GlobalRenderer {
 	}
 	
 	public void renderGame(RenderScene scene) {
+		renderPosX = client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks;
+		renderPosY = client.prevRenderY + (client.renderY - client.prevRenderY) * client.partialTicks;
+		renderPosZ = client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks;
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
@@ -133,6 +163,9 @@ public class GlobalRenderer {
 		glDisable(GL_STENCIL_TEST);
 		glDepthFunc(GL_GREATER);
 		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(100.0f * MathUtil.toRadians, (float)w / (float)h, 0.1f, 1024.0f);
 		cameraMatrix.identity()
 		.rotate(-(client.prevRenderPitch + (client.renderPitch - client.prevRenderPitch) * client.partialTicks) * MathUtil.toRadians, 1.0f, 0.0f, 0.0f)
@@ -147,7 +180,7 @@ public class GlobalRenderer {
 			TerrainRenderer r = terrainRenderers.next();
 		}
 */
-		testModelRenderer.setMaterial(0.0f, 0.0f, 0.4f, 0.2f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.5f, 0.2f, 0.0f, 0.0f);
 		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
@@ -158,12 +191,8 @@ public class GlobalRenderer {
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.glObject);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, lightBuffer.glObject);
 		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
-		lightBuffer.bindFramebuffer();
 		
-		projMatrix.identity();
-		cameraMatrix.identity();
-		viewProjMatrix.identity();
-		modelMatrix.clear();
+		lightBuffer.bindFramebuffer();
 
 		glViewport(0, 0, w, h);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -175,6 +204,46 @@ public class GlobalRenderer {
 		glStencilFunc(GL_EQUAL, 0, 0xFF);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		
+		gBuffer.bindColorTexture(1, 0);
+		gBuffer.bindColorTexture(2, 1);
+		gBuffer.bindColorTexture(3, 2);
+
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+		
+		lightTest.emission = 100.0f;
+		lightTest.lightY = 5.0d;
+		
+		Iterator<LightData> lightRenderers = scene.lightRenderers.iterator();
+		while(lightRenderers.hasNext()) {
+			LightData r = lightRenderers.next();
+			if(r.type == LightType.POINT) {
+				modelMatrix.pushMatrix();
+				translateToWorldCoords(r.lightX, r.lightY, r.lightZ);
+				
+				modelMatrix.scale((float)Math.sqrt(r.emission) * 2.0f);
+				
+				progManager.light_point.use();
+				progManager.light_point_lightColor.set3f(r.lightR, r.lightG, r.lightB);
+				progManager.light_point_lightPosition.set3f((float)(r.lightX - renderPosX), (float)(r.lightY - renderPosY), (float)(r.lightZ - renderPosZ));
+				progManager.light_point_screenSize.set2f(w, h);
+				progManager.light_point_emission.set1f(r.emission);
+				updateMatrix(progManager.light_point);
+				lightSphere.drawAll(GL_TRIANGLES);
+				modelMatrix.popMatrix();
+			}
+		}
+		
+		glDisable(GL_CULL_FACE);
+		
+		projMatrix.identity();
+		cameraMatrix.identity();
+		viewProjMatrix.identity();
+		modelMatrix.clear();
+		
 		progManager.light_sun.use();
 		updateMatrix(progManager.light_sun);
 		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
@@ -185,21 +254,17 @@ public class GlobalRenderer {
 		progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
 		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
 		//progManager.light_sun_lookdirection.set3f(lookDir.x, lookDir.y, lookDir.z);
-		
-		gBuffer.bindColorTexture(1, 0);
-		gBuffer.bindColorTexture(2, 1);
-		gBuffer.bindColorTexture(3, 2);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
-		Iterator<LightData> lightRenderers = scene.lightRenderers.iterator();
-		while(lightRenderers.hasNext()) {
-			LightData r = lightRenderers.next();
-		}
+		glDisable(GL_BLEND);
+		
+		glCullFace(GL_BACK);
 
 		combinedBuffer.setSize(w, h);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.glObject);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, combinedBuffer.glObject);
 		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		
 		combinedBuffer.bindFramebuffer();
 		
 		glViewport(0, 0, w, h);
@@ -276,12 +341,12 @@ public class GlobalRenderer {
 	
 	public void translateToWorldCoords(double x, double y, double z) {
 		modelMatrix.translate(
-				(float)(x - (client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks)),
-				(float)(y - (client.prevRenderY + (client.renderY - client.prevRenderY) * client.partialTicks)),
-				(float)(z - (client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks))
+				(float)(x - renderPosX),
+				(float)(y - renderPosY),
+				(float)(z - renderPosZ)
 		);
 	}
-	
+	/*
 	public float toLocalX(double worldX) {
 		return (float)(worldX - (client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks));
 	}
@@ -293,9 +358,16 @@ public class GlobalRenderer {
 	public float toLocalZ(double worldZ) {
 		return (float)(worldZ - (client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks));
 	}
+	*/
 	
 	public void destory() {
-		quadArray.destroyWithBuffers();
+		this.quadArray.destroyWithBuffers();
+		this.combinedBuffer.destroy();
+		this.gBuffer.destroy();
+		this.lightBuffer.destroy();
+		this.testGraphic.destroy();
+		this.testModel.destroyWithBuffers();
+		this.testModelTexture.destroy();
 	}
 
 }

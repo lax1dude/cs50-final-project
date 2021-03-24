@@ -101,12 +101,14 @@ public class ModelConverterWindow extends JDialog {
 											OBJConverter.convertModel(new String(Files.readAllBytes(ModelConverterWindow.this.file.toPath()), Charset.forName("UTF8")), chckbxNewCheckBox_1.isSelected(),
 													chckbxExportTexcoords.isSelected(), chckbxNewCheckBox.isSelected(), chckbxNewCheckBox_2.isSelected(), chckbxNewCheckBox_3.isSelected(), fos);
 										}catch(Throwable t) {
+											t.printStackTrace();
 											JOptionPane.showMessageDialog(ModelConverterWindow.this, t.toString(), "error", JOptionPane.ERROR_MESSAGE);
 										}
 										fos.close();
 										ModelConverterWindow.this.dispose();
 									}
 								}catch(Throwable t) {
+									t.printStackTrace();
 									JOptionPane.showMessageDialog(ModelConverterWindow.this, t.toString(), "error", JOptionPane.ERROR_MESSAGE);
 								}
 							}

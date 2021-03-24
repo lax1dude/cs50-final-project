@@ -68,14 +68,10 @@ public class OBJConverter {
 				byte[] b = new byte[24];
 				
 				float[] v = vertexes.get(f[i][0]-1);
-				byte[] n = normals.get(f[i][2]-1);
-				float[] t = texcoords.get(f[i][1]-1);
 				
 				int ix = Float.floatToRawIntBits(v[0]);
 				int iy = Float.floatToRawIntBits(v[1]);
 				int iz = Float.floatToRawIntBits(v[2]);
-				int ix3 = Float.floatToRawIntBits(t[0]);
-				int iy3 = Float.floatToRawIntBits(t[1]);
 				
 				int idx = 0;
 				
@@ -84,6 +80,8 @@ public class OBJConverter {
 				b[idx++] = (byte)(iz); b[idx++] = (byte)(iz >> 8); b[idx++] = (byte)(iz >> 16); b[idx++] = (byte)(iz >> 24);
 				
 				if(normal) {
+					byte[] n = normals.get(f[i][2]-1);
+					
 					b[idx++] = n[0];
 					b[idx++] = n[1];
 					b[idx++] = n[2];
@@ -91,6 +89,10 @@ public class OBJConverter {
 				}
 				
 				if(texture) {
+					float[] t = texcoords.get(f[i][1]-1);
+					int ix3 = Float.floatToRawIntBits(t[0]);
+					int iy3 = Float.floatToRawIntBits(t[1]);
+					
 					b[idx++] = (byte)(ix3); b[idx++] = (byte)(ix3 >> 8); b[idx++] = (byte)(ix3 >> 16); b[idx++] = (byte)(ix3 >> 24);
 					b[idx++] = (byte)(iy3); b[idx++] = (byte)(iy3 >> 8); b[idx++] = (byte)(iy3 >> 16); b[idx++] = (byte)(iy3 >> 24);
 				}

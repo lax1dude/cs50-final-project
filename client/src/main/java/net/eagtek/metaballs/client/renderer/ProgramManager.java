@@ -26,6 +26,12 @@ public class ProgramManager {
 	public EaglUniform light_sun_color;
 	public EaglUniform light_sun_direction;
 	public EaglUniform light_sun_lookdirection;
+	
+	public EaglProgram light_point;
+	public EaglUniform light_point_lightPosition;
+	public EaglUniform light_point_lightColor;
+	public EaglUniform light_point_screenSize;
+	public EaglUniform light_point_emission;
 
 	public EaglProgram post_fxaa;
 	public EaglUniform post_fxaa_screenSize;
@@ -99,6 +105,20 @@ public class ProgramManager {
 		this.post_fxaa_edgeThreshold = post_fxaa.getUniform("edgeThreshold");
 		this.post_fxaa_edgeThresholdMin = post_fxaa.getUniform("edgeThresholdMin");
 		this.post_fxaa_screenSize = post_fxaa.getUniform("screenSize");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_point.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_point.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_point.fsh");
+		this.light_point = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		light_point.getUniform("material").set1i(0);
+		light_point.getUniform("normal").set1i(1);
+		light_point.getUniform("position").set1i(2);
+		
+		light_point_lightPosition = light_point.getUniform("lightPosition");
+		light_point_lightColor = light_point.getUniform("lightColor");
+		light_point_screenSize = light_point.getUniform("screenSize");
+		light_point_emission = light_point.getUniform("emission");
 	}
 	
 	public ProgramManager(GlobalRenderer renderer) {
