@@ -5,7 +5,7 @@ import org.joml.Vector3f;
 public class LightData {
 	
 	public static enum LightType {
-		DIRECTION, POINT, HALFPOINT, SPOT
+		DIRECTION, POINT, SPOT
 	}
 	
 	public LightType type;
@@ -21,8 +21,8 @@ public class LightData {
 	public float emission;
 	public float pointsize;
 	
-	public Vector3f direction = new Vector3f();
-	public Vector3f halfVector = new Vector3f();
+	public Vector3f direction;
+	public float spotRadius;
 	
 	public LightData(LightType type, float emission, float pointsize, double lightX, double lightY, double lightZ) {
 		this.type = type;
@@ -31,6 +31,7 @@ public class LightData {
 		this.lightX = lightX;
 		this.lightY = lightY;
 		this.lightZ = lightZ;
+		this.direction = new Vector3f();
 	}
 	
 	public LightData setRGB(float r, float g, float b) {
@@ -45,8 +46,8 @@ public class LightData {
 		return this;
 	}
 	
-	public LightData setHalfVector(float x, float y, float z) {
-		halfVector.set(x, y, z).normalize();
+	public LightData setSpotRadius(float s) {
+		spotRadius = s;
 		return this;
 	}
 }

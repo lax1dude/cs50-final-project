@@ -13,8 +13,7 @@ uniform mat4 matrix_mvp;
 uniform mat4 matrix_m;
 uniform mat4 matrix_m_invtrans;
 
-void main()
-{
+void main() {
 	v_texCoord = texIn;
 	v_pos = (matrix_m * vec4(posIn, 1.0)).xyz;
 	v_normal = (normIn.xyz * mat3(matrix_m_invtrans)).xyz;

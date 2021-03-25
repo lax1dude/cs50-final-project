@@ -32,12 +32,31 @@ public class ProgramManager {
 	public EaglUniform light_point_lightColor;
 	public EaglUniform light_point_screenSize;
 	public EaglUniform light_point_emission;
+	public EaglUniform light_point_size;
+	
+	public EaglProgram light_spot;
+	public EaglUniform light_spot_lightPosition;
+	public EaglUniform light_spot_lightDirection;
+	public EaglUniform light_spot_lightColor;
+	public EaglUniform light_spot_screenSize;
+	public EaglUniform light_spot_emission;
+	public EaglUniform light_spot_radius;
+	public EaglUniform light_spot_size;
 
 	public EaglProgram post_fxaa;
 	public EaglUniform post_fxaa_screenSize;
 	public EaglUniform post_fxaa_edgeSharpness;
 	public EaglUniform post_fxaa_edgeThreshold;
 	public EaglUniform post_fxaa_edgeThresholdMin;
+
+	public EaglProgram shadow_3f_4b_2f;
+
+	public EaglProgram sunshadow_generate;
+	public EaglUniform sunshadow_generate_matrixA;
+	public EaglUniform sunshadow_generate_matrixB;
+	public EaglUniform sunshadow_generate_matrixC;
+	public EaglUniform sunshadow_generate_matrixD;
+	public EaglUniform sunshadow_generate_randTimer;
 	
 	public final GlobalRenderer renderer;
 	
@@ -89,6 +108,8 @@ public class ProgramManager {
 		light_sun.getUniform("material").set1i(0);
 		light_sun.getUniform("normal").set1i(1);
 		light_sun.getUniform("position").set1i(2);
+		light_sun.getUniform("sunShadow").set1i(3);
+		//light_sun.getUniform("sunShadowDownscale").set1i(4);
 
 		light_sun_color = light_sun.getUniform("sunRGB");
 		light_sun_direction = light_sun.getUniform("sunDirection");
@@ -101,10 +122,10 @@ public class ProgramManager {
 		
 		post_fxaa.getUniform("tex").set1i(0);
 		
-		this.post_fxaa_edgeSharpness = post_fxaa.getUniform("edgeSharpness");
-		this.post_fxaa_edgeThreshold = post_fxaa.getUniform("edgeThreshold");
-		this.post_fxaa_edgeThresholdMin = post_fxaa.getUniform("edgeThresholdMin");
-		this.post_fxaa_screenSize = post_fxaa.getUniform("screenSize");
+		post_fxaa_edgeSharpness = post_fxaa.getUniform("edgeSharpness");
+		post_fxaa_edgeThreshold = post_fxaa.getUniform("edgeThreshold");
+		post_fxaa_edgeThresholdMin = post_fxaa.getUniform("edgeThresholdMin");
+		post_fxaa_screenSize = post_fxaa.getUniform("screenSize");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_point.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_point.vsh");
@@ -119,6 +140,46 @@ public class ProgramManager {
 		light_point_lightColor = light_point.getUniform("lightColor");
 		light_point_screenSize = light_point.getUniform("screenSize");
 		light_point_emission = light_point.getUniform("emission");
+		light_point_size = light_point.getUniform("size");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_spot.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_spot.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_spot.fsh");
+		this.light_spot = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		light_spot.getUniform("material").set1i(0);
+		light_spot.getUniform("normal").set1i(1);
+		light_spot.getUniform("position").set1i(2);
+
+		light_spot_lightPosition = light_spot.getUniform("lightPosition");
+		light_spot_lightDirection = light_spot.getUniform("lightDirection");
+		light_spot_lightColor = light_spot.getUniform("lightColor");
+		light_spot_screenSize = light_spot.getUniform("screenSize");
+		light_spot_radius = light_spot.getUniform("radiusF");
+		light_spot_emission = light_spot.getUniform("emission");
+		light_spot_size = light_spot.getUniform("size");
+
+		source = ResourceLoader.loadResourceString("metaballs/shaders/shadow_3f_4b_2f.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "shadow_3f_4b_2f.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "shadow_3f_4b_2f.fsh");
+		this.shadow_3f_4b_2f = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/sunshadow_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "sunshadow_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "sunshadow_generate.fsh");
+		this.sunshadow_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		sunshadow_generate.getUniform("position").set1i(0);
+		sunshadow_generate.getUniform("shadowMapA").set1i(1);
+		sunshadow_generate.getUniform("shadowMapB").set1i(2);
+		sunshadow_generate.getUniform("shadowMapC").set1i(3);
+		sunshadow_generate.getUniform("shadowMapD").set1i(4);
+
+		sunshadow_generate_matrixA = sunshadow_generate.getUniform("shadowMatrixA");
+		sunshadow_generate_matrixB = sunshadow_generate.getUniform("shadowMatrixB");
+		sunshadow_generate_matrixC = sunshadow_generate.getUniform("shadowMatrixC");
+		sunshadow_generate_matrixD = sunshadow_generate.getUniform("shadowMatrixD");
+		sunshadow_generate_randTimer = sunshadow_generate.getUniform("randTimer");
 	}
 	
 	public ProgramManager(GlobalRenderer renderer) {
@@ -132,6 +193,10 @@ public class ProgramManager {
 		gbuffer_3f_4b_2f_uniform.destroy();
 		gbuffer_combined.destroy();
 		light_sun.destroy();
+		post_fxaa.destroy();
+		light_point.destroy();
+		light_spot.destroy();
+		sunshadow_generate.destroy();
 	}
 
 }

@@ -34,35 +34,78 @@ public class EaglFramebuffer {
 			this.rbo = rbo;
 		}
 	}
+	
+	public static class DepthBuffer {
+		public final int glObject;
+		public final DepthBufferType depthBufferType;
+		
+		private boolean destroyed = false;
+		
+		protected DepthBuffer(DepthBufferType depthBufferType) {
+			if(depthBufferType == DepthBufferType.NONE) {
+				this.glObject = -1;
+			}else if(depthBufferType.rbo){
+				this.glObject = glGenRenderbuffers();
+			}else {
+				this.glObject = glGenTextures();
+			}
+			this.depthBufferType = depthBufferType;
+		}
+
+		public void destroy() {
+			if(!destroyed) {
+				if(depthBufferType != DepthBufferType.NONE) {
+					if(depthBufferType.rbo){
+						glDeleteRenderbuffers(glObject);
+					}else {
+						glDeleteTextures(glObject);
+					}
+				}
+				destroyed = true;
+			}
+		}
+		
+		public void finalize() {
+			if(!destroyed) {
+				if(depthBufferType != DepthBufferType.NONE) {
+					if(depthBufferType.rbo){
+						glDeleteRenderbuffers(glObject);
+					}else {
+						glDeleteTextures(glObject);
+					}
+				}
+				EaglContext.log.warn("GL depth buffer #{} leaked memory", glObject);
+				destroyed = true;
+			}
+		}
+	}
 
 	public final int glObject;
 	public final int[] colorAttachments;
 	public final int[] colorAttachmentTypes;
-	public final int depthBuffer;
-	public final DepthBufferType depthBufferType;
+	public final DepthBuffer depthBuffer;
 	
 	private boolean destroyed = false;
+	
+	private boolean destroyDepthBuffer = false;
 	
 	int samples = 1;
 	
 	private int w = 0;
 	private int h = 0;
 
-	public EaglFramebuffer(DepthBufferType depthStencil, int... targets) {
+	public EaglFramebuffer(DepthBuffer depthStencil, int... targets) {
 		this.glObject = glGenFramebuffers();
-		depthBufferType = depthStencil;
-		
-		if(depthStencil == DepthBufferType.NONE) {
-			this.depthBuffer = -1;
-		}else if(depthStencil.rbo){
-			this.depthBuffer = glGenRenderbuffers();
-		}else {
-			this.depthBuffer = glGenTextures();
-		}
+		this.depthBuffer = depthStencil;
 		
 		colorAttachmentTypes = targets;
 		colorAttachments = new int[targets.length];
 		glGenTextures(colorAttachments);
+	}
+	
+	public EaglFramebuffer(DepthBufferType depthStencil, int... targets) {
+		this(new DepthBuffer(depthStencil), targets);
+		destroyDepthBuffer = true;
 	}
 	
 	public EaglFramebuffer linearTex() {
@@ -96,19 +139,19 @@ public class EaglFramebuffer {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 					EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0, samples);
 				}
-				if(depthBuffer != -1) {
-					if(depthBufferType.rbo){
-						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-						EXTMultisampledRenderToTexture.glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, samples, depthBufferType.glEnumA, w, h);
-						glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer);
+				if(depthBuffer != null) {
+					if(depthBuffer.depthBufferType.rbo){
+						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer.glObject);
+						EXTMultisampledRenderToTexture.glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, samples, depthBuffer.depthBufferType.glEnumA, w, h);
+						glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer.glObject);
 					}else {
-						GLStateManager.bindTexture2D(depthBuffer);
-						glTexImage2D(GL_TEXTURE_2D, 0, depthBufferType.glEnumA, w, h, 0, depthBufferType.glEnumB, depthBufferType.glEnumC, (ByteBuffer)null);
+						GLStateManager.bindTexture2D(depthBuffer.glObject);
+						glTexImage2D(GL_TEXTURE_2D, 0, depthBuffer.depthBufferType.glEnumA, w, h, 0, depthBuffer.depthBufferType.glEnumB, depthBuffer.depthBufferType.glEnumC, (ByteBuffer)null);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-						EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer, 0, samples);
+						EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer.glObject, 0, samples);
 					}
 				}
 			}else {
@@ -121,19 +164,19 @@ public class EaglFramebuffer {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0);
 				}
-				if(depthBuffer != -1) {
-					if(depthBufferType.rbo){
-						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-						glRenderbufferStorage(GL_RENDERBUFFER, depthBufferType.glEnumA, w, h);
-						glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer);
+				if(depthBuffer != null) {
+					if(depthBuffer.depthBufferType.rbo){
+						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer.glObject);
+						glRenderbufferStorage(GL_RENDERBUFFER, depthBuffer.depthBufferType.glEnumA, w, h);
+						glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_RENDERBUFFER, depthBuffer.glObject);
 					}else {
-						GLStateManager.bindTexture2D(depthBuffer);
-						glTexImage2D(GL_TEXTURE_2D, 0, depthBufferType.glEnumA, w, h, 0, depthBufferType.glEnumB, depthBufferType.glEnumC, (ByteBuffer)null);
+						GLStateManager.bindTexture2D(depthBuffer.glObject);
+						glTexImage2D(GL_TEXTURE_2D, 0, depthBuffer.depthBufferType.glEnumA, w, h, 0, depthBuffer.depthBufferType.glEnumB, depthBuffer.depthBufferType.glEnumC, (ByteBuffer)null);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-						glFramebufferTexture2D(GL_FRAMEBUFFER, depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer, 0);
+						glFramebufferTexture2D(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_TEXTURE_2D, depthBuffer.glObject, 0);
 					}
 				}
 			}
@@ -157,8 +200,8 @@ public class EaglFramebuffer {
 	}
 	
 	public void bindDepthTexture(int textureUnit) {
-		if(depthBufferType.rbo == false) {
-			GLStateManager.bindTexture2D(depthBuffer, textureUnit);
+		if(depthBuffer != null && depthBuffer.depthBufferType.rbo == false) {
+			GLStateManager.bindTexture2D(depthBuffer.glObject, textureUnit);
 		}
 	}
 	
@@ -282,12 +325,8 @@ public class EaglFramebuffer {
 		if(!destroyed) {
 			glDeleteFramebuffers(glObject);
 			glDeleteTextures(colorAttachments);
-			if(this.depthBufferType != null && this.depthBufferType != DepthBufferType.NONE) {
-				if(this.depthBufferType.rbo) {
-					glDeleteRenderbuffers(depthBuffer);
-				}else {
-					glDeleteTextures(depthBuffer);
-				}
+			if(destroyDepthBuffer) {
+				depthBuffer.destroy();
 			}
 			destroyed = true;
 		}

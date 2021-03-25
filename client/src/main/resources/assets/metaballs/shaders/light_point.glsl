@@ -28,6 +28,7 @@ uniform vec3 lightPosition;
 uniform vec3 lightColor;
 uniform float emission;
 uniform vec2 screenSize;
+uniform float size;
 
 void main() {
 	vec4 diffuseV;

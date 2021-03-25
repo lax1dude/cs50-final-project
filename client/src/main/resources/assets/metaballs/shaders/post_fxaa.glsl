@@ -6,11 +6,9 @@ layout(location = 1) in vec2 texIn;
 
 out vec2 texCoord;
 
-uniform mat4 matrix_mvp;
-
 void main() {
 	texCoord = texIn;
-    gl_Position = matrix_mvp * vec4(posIn, 1.0);
+    gl_Position = vec4(posIn, 1.0);
 }
 
 #endif
