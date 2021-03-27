@@ -1,0 +1,4 @@
+#!/bin/sh
+cd linux
+read -p "Enter a platform and hit enter [opengl|vulkan] : " plaf
+java -Djava.library.path=. -Xmx1G -Xms1G -jar ../test.jar --debug --dev-assets ../assets_dev --platform $plaf
