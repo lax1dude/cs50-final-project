@@ -67,6 +67,7 @@ public class ProgramManager {
 	public EaglUniform light_point_shadowmap_emission;
 	public EaglUniform light_point_shadowmap_size;
 	public EaglUniform light_point_shadowmap_shadowMatrix;
+	public EaglUniform light_point_shadowmap_shadowMapIndex;
 	
 	public EaglProgram light_spot_shadowmap;
 	public EaglUniform light_spot_shadowmap_lightPosition;
@@ -77,6 +78,7 @@ public class ProgramManager {
 	public EaglUniform light_spot_shadowmap_radius;
 	public EaglUniform light_spot_shadowmap_size;
 	public EaglUniform light_spot_shadowmap_shadowMatrix;
+	public EaglUniform light_spot_shadowmap_shadowMapIndex;
 
 	public EaglProgram linearize_depth;
 	public EaglUniform linearize_depth_farPlane;
@@ -200,12 +202,9 @@ public class ProgramManager {
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "sunshadow_generate.fsh");
 		this.sunshadow_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 
-		sunshadow_generate.getUniform("position").set1i(0);
-		sunshadow_generate.getUniform("shadowMapA").set1i(1);
-		sunshadow_generate.getUniform("shadowMapB").set1i(2);
-		sunshadow_generate.getUniform("shadowMapC").set1i(3);
-		sunshadow_generate.getUniform("shadowMapD").set1i(4);
-		sunshadow_generate.getUniform("normal").set1i(5);
+		sunshadow_generate.getUniform("normal").set1i(0);
+		sunshadow_generate.getUniform("position").set1i(1);
+		sunshadow_generate.getUniform("shadowMap").set1i(2);
 
 		sunshadow_generate_matrixA = sunshadow_generate.getUniform("shadowMatrixA");
 		sunshadow_generate_matrixB = sunshadow_generate.getUniform("shadowMatrixB");
@@ -229,6 +228,7 @@ public class ProgramManager {
 		light_point_shadowmap_emission = light_point_shadowmap.getUniform("emission");
 		light_point_shadowmap_size = light_point_shadowmap.getUniform("size");
 		light_point_shadowmap_shadowMatrix = light_point_shadowmap.getUniform("shadowMatrix");
+		light_point_shadowmap_shadowMapIndex = light_point_shadowmap.getUniform("shadowMapIndex");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_spot_shadowmap.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_spot_shadowmap.vsh");
@@ -248,6 +248,7 @@ public class ProgramManager {
 		light_spot_shadowmap_emission = light_spot_shadowmap.getUniform("emission");
 		light_spot_shadowmap_size = light_spot_shadowmap.getUniform("size");
 		light_spot_shadowmap_shadowMatrix = light_spot_shadowmap.getUniform("shadowMatrix");
+		light_spot_shadowmap_shadowMapIndex = light_spot_shadowmap.getUniform("shadowMapIndex");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/linearize_depth.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "linearize_depth.vsh");

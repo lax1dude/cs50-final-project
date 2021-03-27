@@ -478,6 +478,8 @@ public class EaglContext {
         
         glfw_eglHandle = glfwGetEGLDisplay();
         
+		log.info("EGL Version: {}", eglQueryString(glfw_eglHandle, EGL_VERSION));
+        
         if(!windowed) glfwSetWindowPos(glfw_windowHandle, x, y);
         
         int[] major = new int[] { 1 };

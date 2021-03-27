@@ -68,14 +68,10 @@ public class GlobalRenderer {
 	private final EaglFramebuffer lightBuffer;
 	private final EaglFramebuffer combinedBuffer;
 
-	private final EaglFramebuffer sunShadowMapA;
-	private final EaglFramebuffer sunShadowMapB;
-	private final EaglFramebuffer sunShadowMapC;
-	private final EaglFramebuffer sunShadowMapD;
-
+	private final EaglFramebuffer sunShadowMap;
 	private final EaglFramebuffer sunShadowBuffer;
-	//private final EaglFramebuffer sunShadowBuffer16th;
-	//private final EaglFramebuffer sunShadowBlurred;
+	
+	private final EaglFramebuffer lightShadowMap;
 
 	private final EaglFramebuffer linearDepthBuffer;
 	private final EaglFramebuffer ambientOcclusionBuffer;
@@ -178,14 +174,10 @@ public class GlobalRenderer {
 
 		combinedBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB8);
 
-		sunShadowMapA = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
-		sunShadowMapB = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
-		sunShadowMapC = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
-		sunShadowMapD = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
-		
+		sunShadowMap = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
 		sunShadowBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_R8);
-		//sunShadowBuffer16th = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
-		//sunShadowBlurred = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
+		
+		lightShadowMap = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
 		
 		linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		ambientOcclusionBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
@@ -277,8 +269,8 @@ public class GlobalRenderer {
 
 		// ================================================= RENDER SUN SHADOW MAPS =======================================================
 		
-		sunShadowMapA.setSize(GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
-		sunShadowMapA.bindFramebuffer();
+		sunShadowMap.setSize(GameConfiguration.sunShadowMapResolution * 4, GameConfiguration.sunShadowMapResolution);
+		sunShadowMap.bindFramebuffer();
 		glViewport(0, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
 
 		projMatrix.pushMatrix();
@@ -316,9 +308,7 @@ public class GlobalRenderer {
 			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this);
 		}
 		
-		sunShadowMapB.setSize(GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
-		sunShadowMapB.bindFramebuffer();
-		glViewport(0, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
+		glViewport(GameConfiguration.sunShadowMapResolution * 1, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).ortho(
 				-GameConfiguration.sunShadowLODBDistance, 
@@ -332,9 +322,6 @@ public class GlobalRenderer {
 		sunShadowProjViewB.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		glClearDepthf(0.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
@@ -347,9 +334,7 @@ public class GlobalRenderer {
 			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this);
 		}
 		
-		sunShadowMapC.setSize(GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
-		sunShadowMapC.bindFramebuffer();
-		glViewport(0, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
+		glViewport(GameConfiguration.sunShadowMapResolution * 2, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).ortho(
 				-GameConfiguration.sunShadowLODCDistance, 
@@ -363,18 +348,13 @@ public class GlobalRenderer {
 		sunShadowProjViewC.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		glClearDepthf(0.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
 			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this, 2);
 		}
 		
-		sunShadowMapD.setSize(GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
-		sunShadowMapD.bindFramebuffer();
-		glViewport(0, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
+		glViewport(GameConfiguration.sunShadowMapResolution * 3, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).ortho(
 				-GameConfiguration.sunShadowLODDDistance, 
@@ -388,9 +368,6 @@ public class GlobalRenderer {
 		sunShadowProjViewD.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		glClearDepthf(0.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
@@ -399,8 +376,15 @@ public class GlobalRenderer {
 		
 		// ================================================= RENDER LIGHT SHADOW MAPS =======================================================
 
+		lightShadowMap.setSize(GameConfiguration.lightShadowMapResolution * 6, GameConfiguration.lightShadowMapResolution * 6);
+		lightShadowMap.bindFramebuffer();
 		
-		lightTest.setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(30.0f);
+		glClearDepthf(0.0f);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		
+		int atlasLocation = 0;
+		
+		lightTest.setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(50.0f);
 		lightTest.pointsize = 30.0f;
 
 		lightTest.lightX = 5.0d;
@@ -430,7 +414,7 @@ public class GlobalRenderer {
 			if(viewProjFustrum.testSphere(x, y, z, lightRadius)) {
 				s.objectsInFrustum = new LinkedList();
 				cameraMatrix.identity().lookAlong(s.direction, up);
-				projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(Math.min((s.type == LightData.LightType.SPOT ? s.spotRadius : 90.0f) * MathUtil.toRadians * 2.5f, (float)Math.PI - 0.001f), 1.0f, 0.1f, lightRadius * 2.0f);
+				projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(Math.min((s.type == LightData.LightType.SPOT ? s.spotRadius : 90.0f) * MathUtil.toRadians * 2.25f, (float)Math.PI - 0.001f), 1.0f, 0.1f, lightRadius * 2.0f);
 				cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
 				s.shadowMatrix.set(viewProjMatrix);
 				i.set(viewProjMatrix);
@@ -442,11 +426,10 @@ public class GlobalRenderer {
 					}
 				}
 				if(s.objectsInFrustum.size() > 0) {
-					s.shadowMap.setSize(GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
-					s.shadowMap.bindFramebuffer();
-					glClearDepthf(0.0f);
-					glClear(GL_DEPTH_BUFFER_BIT);
-					glViewport(0, 0, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
+					s.atlasLocation = atlasLocation++;
+					int xx = s.atlasLocation % 6;
+					int yy = s.atlasLocation / 6;
+					glViewport(xx * GameConfiguration.lightShadowMapResolution, yy * GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
 					objectRenderers = s.objectsInFrustum.iterator();
 					while(objectRenderers.hasNext()) {
 						ObjectRenderer r = objectRenderers.next();
@@ -491,12 +474,9 @@ public class GlobalRenderer {
 		progManager.sunshadow_generate_matrixD.setMatrix4f(sunShadowProjViewD);
 		progManager.sunshadow_generate_randTimer.set1f(client.totalTicksF % 100.0f);
 
-		gBuffer.bindColorTexture(3, 0);
-		sunShadowMapA.bindDepthTexture(1);
-		sunShadowMapB.bindDepthTexture(2);
-		sunShadowMapC.bindDepthTexture(3);
-		sunShadowMapD.bindDepthTexture(4);
-		gBuffer.bindColorTexture(2, 5);
+		gBuffer.bindColorTexture(2, 0);
+		gBuffer.bindColorTexture(3, 1);
+		sunShadowMap.bindDepthTexture(2);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		glDisable(GL_STENCIL_TEST);
@@ -644,6 +624,8 @@ public class GlobalRenderer {
 				}
 			}
 		}
+
+		lightShadowMap.bindDepthTexture(3);
 		
 		shadowLightRenderers = scene.shadowLightRenderers.iterator();
 		while(shadowLightRenderers.hasNext()) {
@@ -666,7 +648,7 @@ public class GlobalRenderer {
 						progManager.light_point_shadowmap_emission.set1f(r.emission);
 						progManager.light_point_shadowmap_size.set1f(r.pointsize);
 						progManager.light_point_shadowmap_shadowMatrix.setMatrix4f(s.shadowMatrix);
-						s.shadowMap.bindDepthTexture(3);
+						progManager.light_point_shadowmap_shadowMapIndex.set1f(s.atlasLocation);
 						updateMatrix(progManager.light_point_shadowmap);
 						lightSphere.drawAll(GL_TRIANGLES);
 						modelMatrix.popMatrix();
@@ -687,7 +669,7 @@ public class GlobalRenderer {
 						progManager.light_spot_shadowmap_emission.set1f(r.emission);
 						progManager.light_spot_shadowmap_size.set1f(r.pointsize);
 						progManager.light_spot_shadowmap_shadowMatrix.setMatrix4f(s.shadowMatrix);
-						s.shadowMap.bindDepthTexture(3);
+						progManager.light_spot_shadowmap_shadowMapIndex.set1f(s.atlasLocation);
 						updateMatrix(progManager.light_spot_shadowmap);
 						lightCone.drawAll(GL_TRIANGLES);
 						modelMatrix.popMatrix();
@@ -878,12 +860,9 @@ public class GlobalRenderer {
 		this.lightSphere.destroyWithBuffers();
 		this.lightHemisphere.destroyWithBuffers();
 		this.testModelTexture.destroy();
-		this.sunShadowMapA.destroy();
-		this.sunShadowMapB.destroy();
-		this.sunShadowMapC.destroy();
-		this.sunShadowMapD.destroy();
+		this.sunShadowMap.destroy();
 		this.sunShadowBuffer.destroy();
-		this.lightTest.shadowMap.destroy();
+		this.lightShadowMap.destroy();
 		this.linearDepthBuffer.destroy();
 		this.ambientOcclusionBuffer.destroy();
 		this.ambientOcclusionBlur.destroy();

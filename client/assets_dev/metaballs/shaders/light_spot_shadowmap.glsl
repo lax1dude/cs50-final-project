@@ -33,6 +33,7 @@ uniform float radiusF;
 uniform float size;
 
 uniform mat4 shadowMatrix;
+uniform float shadowMapIndex;
 
 uniform vec2 screenSize;
 
@@ -81,6 +82,8 @@ void main() {
 		if(!isInTexture(shadowPos.xyz)) {
 			shadow = 1.0;
 		}else {
+			vec2 xy = vec2(mod(shadowMapIndex, 6.0) / 6.0, (floor(shadowMapIndex / 6.0)) / 6.0);
+			
 			float accum = 0.0;
 			float sampleWeight = 1.0 / 15.0;
 		
@@ -91,7 +94,7 @@ void main() {
 				vec4 sampleLoc = shadowMatrix * vec4((positionV.xyz - lightPosition) + rot.xyz * (i < 7.0 ? 0.007 : 0.014) * min(size, 7.0), 1.0);
 				sampleLoc.xyz /= sampleLoc.w;
 				sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-				accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999))).r <= sampleLoc.z) ? sampleWeight : 0.0;
+				accum += (texture(shadowMap, clamp(sampleLoc.xy * vec2(0.25, 0.25) + xy, vec2(0.000001), vec2(0.999999))).r <= sampleLoc.z) ? sampleWeight : 0.0;
 			}
 		
 			shadow = max(accum * 2.0 - 1.0, 0.0);

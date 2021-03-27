@@ -22,6 +22,7 @@ public class GameConfiguration {
 
 	public static int sunShadowMapResolution = 2048;
 	public static int lightShadowMapResolution = 512;
+	
 	public static float sunShadowDistance = 200.0f;
 	
 	public static float sunShadowLODADistance = 10.0f;

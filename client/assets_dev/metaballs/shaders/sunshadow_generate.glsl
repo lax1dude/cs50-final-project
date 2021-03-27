@@ -18,14 +18,10 @@ in vec2 v_texCoord;
 
 layout(location = 0) out float fragOut;
 
+uniform sampler2D normal;
 uniform sampler2D position;
 
-uniform sampler2D shadowMapA;
-uniform sampler2D shadowMapB;
-uniform sampler2D shadowMapC;
-uniform sampler2D shadowMapD;
-
-uniform sampler2D normal;
+uniform sampler2D shadowMap;
 
 uniform mat4 shadowMatrixA;
 uniform mat4 shadowMatrixB;
@@ -73,10 +69,10 @@ void main() {
 				if(!isInTexture(shadowPos.xyz)) {
 					fragOut = 1.0;
 				}else {
-					fragOut = (texture(shadowMapD, shadowPos.xy).r <= shadowPos.z) ? 1.0 : 0.0;
+					fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.75, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 				}	
 			}else {
-				fragOut = (texture(shadowMapC, shadowPos.xy).r <= shadowPos.z) ? 1.0 : 0.0;
+				fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.50, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 			}
 		}else {
 			float accum = 0.0;
@@ -89,7 +85,7 @@ void main() {
 				vec4 sampleLoc = shadowMatrixB * vec4(pos.xyz + rot.xyz * (i < 3.0 ? 0.035 : 0.07) * blurSize, 1.0);
 				
 				sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-				accum += (texture(shadowMapB, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999))).r <= sampleLoc.z) ? sampleWeight : 0.0;
+				accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
 			}
 			
 			fragOut = max(accum * 2.0 - 1.0, 0.0);
@@ -105,7 +101,7 @@ void main() {
 			vec4 sampleLoc = shadowMatrixA * vec4(pos.xyz + rot.xyz * (i < 7.0 ? 0.07 : 0.14) * blurSize, 1.0);
 			
 			sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-			accum += (texture(shadowMapA, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999))).r <= sampleLoc.z) ? sampleWeight : 0.0;
+			accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
 		}
 		
 		fragOut = max(accum * 2.0 - 1.0, 0.0);

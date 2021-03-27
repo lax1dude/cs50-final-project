@@ -29,6 +29,7 @@ uniform vec3 lightColor;
 uniform float emission;
 uniform vec2 screenSize;
 uniform float size;
+uniform float shadowMapIndex;
 
 uniform sampler2D shadowMap;
 uniform mat4 shadowMatrix;

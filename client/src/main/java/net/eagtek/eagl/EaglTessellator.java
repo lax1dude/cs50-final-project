@@ -3,7 +3,7 @@ package net.eagtek.eagl;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import org.lwjgl.system.jemalloc.JEmalloc;
+import org.lwjgl.system.MemoryUtil;
 
 public class EaglTessellator {
 
@@ -22,8 +22,8 @@ public class EaglTessellator {
 		this.bytesPerVertex = bytesPerVertex;
 		this.vertexLimit = vertexLimit;
 		throwOnOverflow = false;
-		vertexBuffer = JEmalloc.je_malloc(bytesPerVertex * vertexLimit).order(ByteOrder.nativeOrder());
-		indexBuffer = indexLimit > 0 ? JEmalloc.je_malloc((vertexLimit > 65536) ? (4 * indexLimit) : (2 * indexLimit)).order(ByteOrder.nativeOrder()) : null;
+		vertexBuffer = MemoryUtil.memAlloc(bytesPerVertex * vertexLimit).order(ByteOrder.nativeOrder());
+		indexBuffer = indexLimit > 0 ? MemoryUtil.memAlloc((vertexLimit > 65536) ? (4 * indexLimit) : (2 * indexLimit)).order(ByteOrder.nativeOrder()) : null;
 	}
 	
 	public final EaglTessellator reset() {
@@ -298,8 +298,8 @@ public class EaglTessellator {
 
 	public void destroy() {
 		if(!destroyed) {
-			JEmalloc.je_free(vertexBuffer);
-			if(indexBuffer != null) JEmalloc.je_free(indexBuffer);
+			MemoryUtil.memFree(vertexBuffer);
+			if(indexBuffer != null) MemoryUtil.memFree(indexBuffer);
 			destroyed = true;
 		}
 	}
@@ -307,8 +307,8 @@ public class EaglTessellator {
 	public void finalize() {
 		if(!destroyed) {
 			EaglContext.log.warn("Tessellator {} leaked memory", this.toString());
-			JEmalloc.je_free(vertexBuffer);
-			if(indexBuffer != null) JEmalloc.je_free(indexBuffer);
+			MemoryUtil.memFree(vertexBuffer);
+			if(indexBuffer != null) MemoryUtil.memFree(indexBuffer);
 			destroyed = true;
 		}
 	}
