@@ -58,7 +58,7 @@ public class EaglContext {
 		vulkan(GLFW_ANGLE_PLATFORM_TYPE_VULKAN, "vulkan");
 		
 		protected final int eglEnum;
-		protected final String id;
+		public final String id;
 		
 		private ContextPlatform(int eglEnum, String id) {
 			this.eglEnum = eglEnum;

@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import net.eagtek.eagl.EaglContext;
 import net.eagtek.eagl.ResourceLoader;
-import net.eagtek.eagl.EaglContext.ContextPlatform;
 import net.eagtek.eagl.EaglContext.KeyboardEvent;
 import net.eagtek.eagl.EaglContext.ToolkitPlatform;
 import net.eagtek.metaballs.MathUtil;
@@ -42,7 +41,7 @@ public class GameClient {
 		debugMode = debug;
 		log.info("debug mode: {}", debug);
 		lastTick = System.nanoTime();
-		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.opengl, GameConfiguration.gameName, 1);
+		context = new EaglContext(ToolkitPlatform.desktop, Main.platform, GameConfiguration.gameName, 1);
 	}
 
 	public void run() {
