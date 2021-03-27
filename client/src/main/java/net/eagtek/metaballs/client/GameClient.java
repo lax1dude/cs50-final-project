@@ -42,7 +42,7 @@ public class GameClient {
 		debugMode = debug;
 		log.info("debug mode: {}", debug);
 		lastTick = System.nanoTime();
-		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.d3d11, GameConfiguration.gameName, 1);
+		context = new EaglContext(ToolkitPlatform.desktop, ContextPlatform.opengl, GameConfiguration.gameName, 1);
 	}
 
 	public void run() {

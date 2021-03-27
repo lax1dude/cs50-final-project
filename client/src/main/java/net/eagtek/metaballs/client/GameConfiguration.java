@@ -21,11 +21,14 @@ public class GameConfiguration {
 	public static String glslFrag_CubeSamplerPrecision = "lowp";
 
 	public static int sunShadowMapResolution = 2048;
+	public static int lightShadowMapResolution = 512;
 	public static float sunShadowDistance = 200.0f;
 	
 	public static float sunShadowLODADistance = 10.0f;
 	public static float sunShadowLODBDistance = 50.0f;
 	public static float sunShadowLODCDistance = 250.0f;
 	public static float sunShadowLODDDistance = 1250.0f;
+	
+	public static float farPlane = 2048.0f;
 	
 }

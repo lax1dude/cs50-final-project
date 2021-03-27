@@ -2,6 +2,8 @@ package net.eagtek.metaballs.client.renderer;
 
 import static org.lwjgl.opengles.GLES30.*;
 
+import org.joml.FrustumIntersection;
+
 import net.eagtek.eagl.EaglVertexArray;
 import net.eagtek.eagl.GLStateManager;
 import net.eagtek.metaballs.MathUtil;
@@ -80,9 +82,9 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
 		globalRenderer.modelMatrix.pushMatrix();
 		globalRenderer.translateToWorldCoords(posX, posY, posZ);
-		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotate(rotationY * MathUtil.toRadians, 0.0f, 1.0f, 0.0f);
-		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotate(rotationX * MathUtil.toRadians, 1.0f, 0.0f, 0.0f);
-		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotate(rotationZ * MathUtil.toRadians, 0.0f, 0.0f, 1.0f);
+		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotateY(rotationY * MathUtil.toRadians);
+		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotateX(rotationX * MathUtil.toRadians);
+		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotateZ(rotationZ * MathUtil.toRadians);
 		if(scale != 1.0f) globalRenderer.modelMatrix.scale(scale);
 		GLStateManager.bindTexture2D(texture2D);
 		globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
@@ -101,9 +103,9 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		m.shadow_3f_4b_2f.use();
 		globalRenderer.modelMatrix.pushMatrix();
 		globalRenderer.translateToWorldCoords(posX, posY, posZ);
-		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotate(rotationY * MathUtil.toRadians, 0.0f, 1.0f, 0.0f);
-		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotate(rotationX * MathUtil.toRadians, 1.0f, 0.0f, 0.0f);
-		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotate(rotationZ * MathUtil.toRadians, 0.0f, 0.0f, 1.0f);
+		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotateY(rotationY * MathUtil.toRadians);
+		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotateX(rotationX * MathUtil.toRadians);
+		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotateZ(rotationZ * MathUtil.toRadians);
 		if(scale != 1.0f) globalRenderer.modelMatrix.scale(scale);
 		globalRenderer.updateMatrix(m.shadow_3f_4b_2f);
 		array.drawAll(drawmode);
@@ -113,6 +115,11 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	@Override
 	public void renderTransparent(GlobalRenderer globalRenderer) {
 		
+	}
+
+	@Override
+	public boolean isInFrustum(FrustumIntersection i) {
+		return true;
 	}
 
 }

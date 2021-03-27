@@ -2,6 +2,8 @@ package net.eagtek.metaballs.client.renderer;
 
 import static org.lwjgl.opengles.GLES30.*;
 
+import java.util.Random;
+
 import net.eagtek.eagl.EaglProgram;
 import net.eagtek.eagl.EaglShader;
 import net.eagtek.eagl.EaglUniform;
@@ -58,6 +60,35 @@ public class ProgramManager {
 	public EaglUniform sunshadow_generate_matrixD;
 	public EaglUniform sunshadow_generate_randTimer;
 	
+	public EaglProgram light_point_shadowmap;
+	public EaglUniform light_point_shadowmap_lightPosition;
+	public EaglUniform light_point_shadowmap_lightColor;
+	public EaglUniform light_point_shadowmap_screenSize;
+	public EaglUniform light_point_shadowmap_emission;
+	public EaglUniform light_point_shadowmap_size;
+	public EaglUniform light_point_shadowmap_shadowMatrix;
+	
+	public EaglProgram light_spot_shadowmap;
+	public EaglUniform light_spot_shadowmap_lightPosition;
+	public EaglUniform light_spot_shadowmap_lightDirection;
+	public EaglUniform light_spot_shadowmap_lightColor;
+	public EaglUniform light_spot_shadowmap_screenSize;
+	public EaglUniform light_spot_shadowmap_emission;
+	public EaglUniform light_spot_shadowmap_radius;
+	public EaglUniform light_spot_shadowmap_size;
+	public EaglUniform light_spot_shadowmap_shadowMatrix;
+
+	public EaglProgram linearize_depth;
+	public EaglUniform linearize_depth_farPlane;
+	
+	public EaglProgram ssao_generate;
+	public EaglUniform ssao_generate_randomTime;
+	public EaglUniform ssao_generate_matrix_v_invtrans;
+	public EaglUniform ssao_generate_matrix_p_inv;
+	
+	public EaglProgram ssao_blur;
+	public EaglUniform ssao_blur_blurDirection;
+	
 	public final GlobalRenderer renderer;
 	
 	public void refresh() {
@@ -109,7 +140,7 @@ public class ProgramManager {
 		light_sun.getUniform("normal").set1i(1);
 		light_sun.getUniform("position").set1i(2);
 		light_sun.getUniform("sunShadow").set1i(3);
-		//light_sun.getUniform("sunShadowDownscale").set1i(4);
+		light_sun.getUniform("ssaoBuffer").set1i(4);
 
 		light_sun_color = light_sun.getUniform("sunRGB");
 		light_sun_direction = light_sun.getUniform("sunDirection");
@@ -174,12 +205,96 @@ public class ProgramManager {
 		sunshadow_generate.getUniform("shadowMapB").set1i(2);
 		sunshadow_generate.getUniform("shadowMapC").set1i(3);
 		sunshadow_generate.getUniform("shadowMapD").set1i(4);
+		sunshadow_generate.getUniform("normal").set1i(5);
 
 		sunshadow_generate_matrixA = sunshadow_generate.getUniform("shadowMatrixA");
 		sunshadow_generate_matrixB = sunshadow_generate.getUniform("shadowMatrixB");
 		sunshadow_generate_matrixC = sunshadow_generate.getUniform("shadowMatrixC");
 		sunshadow_generate_matrixD = sunshadow_generate.getUniform("shadowMatrixD");
 		sunshadow_generate_randTimer = sunshadow_generate.getUniform("randTimer");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_point_shadowmap.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_point_shadowmap.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_point_shadowmap.fsh");
+		this.light_point_shadowmap = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		light_point_shadowmap.getUniform("material").set1i(0);
+		light_point_shadowmap.getUniform("normal").set1i(1);
+		light_point_shadowmap.getUniform("position").set1i(2);
+		light_point_shadowmap.getUniform("shadowMap").set1i(3);
+		
+		light_point_shadowmap_lightPosition = light_point_shadowmap.getUniform("lightPosition");
+		light_point_shadowmap_lightColor = light_point_shadowmap.getUniform("lightColor");
+		light_point_shadowmap_screenSize = light_point_shadowmap.getUniform("screenSize");
+		light_point_shadowmap_emission = light_point_shadowmap.getUniform("emission");
+		light_point_shadowmap_size = light_point_shadowmap.getUniform("size");
+		light_point_shadowmap_shadowMatrix = light_point_shadowmap.getUniform("shadowMatrix");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_spot_shadowmap.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_spot_shadowmap.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_spot_shadowmap.fsh");
+		this.light_spot_shadowmap = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		light_spot_shadowmap.getUniform("material").set1i(0);
+		light_spot_shadowmap.getUniform("normal").set1i(1);
+		light_spot_shadowmap.getUniform("position").set1i(2);
+		light_spot_shadowmap.getUniform("shadowMap").set1i(3);
+
+		light_spot_shadowmap_lightPosition = light_spot_shadowmap.getUniform("lightPosition");
+		light_spot_shadowmap_lightDirection = light_spot_shadowmap.getUniform("lightDirection");
+		light_spot_shadowmap_lightColor = light_spot_shadowmap.getUniform("lightColor");
+		light_spot_shadowmap_screenSize = light_spot_shadowmap.getUniform("screenSize");
+		light_spot_shadowmap_radius = light_spot_shadowmap.getUniform("radiusF");
+		light_spot_shadowmap_emission = light_spot_shadowmap.getUniform("emission");
+		light_spot_shadowmap_size = light_spot_shadowmap.getUniform("size");
+		light_spot_shadowmap_shadowMatrix = light_spot_shadowmap.getUniform("shadowMatrix");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/linearize_depth.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "linearize_depth.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "linearize_depth.fsh");
+		this.linearize_depth = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		linearize_depth.getUniform("tex").set1i(0);
+		linearize_depth_farPlane = linearize_depth.getUniform("farPlane");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/ssao_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "ssao_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "ssao_generate.fsh");
+		this.ssao_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		ssao_generate.getUniform("normal").set1i(0);
+		ssao_generate.getUniform("originalDepth").set1i(1);
+		
+		ssao_generate_randomTime = ssao_generate.getUniform("randomTime");
+		ssao_generate_matrix_v_invtrans = ssao_generate.getUniform("matrix_v_invtrans");
+		ssao_generate_matrix_p_inv = ssao_generate.getUniform("matrix_p_inv");
+		
+		Random r = new Random("go fuck yourself".hashCode());
+		for(int i = 0; i < 32; i++) {
+			
+			float x = r.nextFloat() * 2.0f - 1.0f;
+			float y = r.nextFloat() * 2.0f - 1.0f;
+			float z = r.nextFloat();
+			
+			float s = lerp(0.3f, 0.9f, r.nextFloat());
+			float hypot = (1.0f / (float) Math.sqrt(x*x + y*y + z*z)) * (float)Math.pow(s, 2.0d);
+			x *= hypot;
+			y *= hypot;
+			z *= hypot;
+			
+			ssao_generate.getUniform("kernel[" + i + "]").set3f(x, y, z);
+		}
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/ssao_blur.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "ssao_blur.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "ssao_blur.fsh");
+		this.ssao_blur = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		ssao_blur.getUniform("ssaoBuffer").set1i(0);
+		ssao_blur.getUniform("linearDepth").set1i(1);
+		
+		ssao_blur_blurDirection = ssao_blur.getUniform("blurDirection");
+	}
+	
+	private static final float lerp(float a, float b, float f){
+	    return a + f * (b - a);
 	}
 	
 	public ProgramManager(GlobalRenderer renderer) {
@@ -197,6 +312,11 @@ public class ProgramManager {
 		light_point.destroy();
 		light_spot.destroy();
 		sunshadow_generate.destroy();
+		light_point_shadowmap.destroy();
+		light_spot_shadowmap.destroy();
+		linearize_depth.destroy();
+		ssao_generate.destroy();
+		ssao_blur.destroy();
 	}
 
 }

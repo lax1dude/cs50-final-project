@@ -466,6 +466,16 @@ public class EaglContext {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		
         glfw_windowHandle = glfwCreateWindow(w, h, title, windowed ? NULL : buf.get(monitorNum), NULL);
+        
+        if(windowed) {
+        	int[] x2 = new int[1];
+        	int[] y2 = new int[1];
+        	int[] w2 = new int[1];
+        	int[] h2 = new int[1];
+        	glfwGetWindowFrameSize(glfw_windowHandle, x2, y2, w2, h2);
+        	glfwSetWindowSize(glfw_windowHandle, w - x2[0] - w2[0], h - y2[0] - h2[0]);
+        }
+        
         glfw_eglHandle = glfwGetEGLDisplay();
         
         if(!windowed) glfwSetWindowPos(glfw_windowHandle, x, y);

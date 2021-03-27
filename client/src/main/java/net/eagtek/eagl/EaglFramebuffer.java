@@ -139,7 +139,7 @@ public class EaglFramebuffer {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 					EXTMultisampledRenderToTexture.glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0, samples);
 				}
-				if(depthBuffer != null) {
+				if(depthBuffer.depthBufferType != DepthBufferType.NONE && depthBuffer != null) {
 					if(depthBuffer.depthBufferType.rbo){
 						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer.glObject);
 						EXTMultisampledRenderToTexture.glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, samples, depthBuffer.depthBufferType.glEnumA, w, h);
@@ -164,7 +164,7 @@ public class EaglFramebuffer {
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorAttachments[i], 0);
 				}
-				if(depthBuffer != null) {
+				if(depthBuffer.depthBufferType != DepthBufferType.NONE && depthBuffer != null) {
 					if(depthBuffer.depthBufferType.rbo){
 						glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer.glObject);
 						glRenderbufferStorage(GL_RENDERBUFFER, depthBuffer.depthBufferType.glEnumA, w, h);
