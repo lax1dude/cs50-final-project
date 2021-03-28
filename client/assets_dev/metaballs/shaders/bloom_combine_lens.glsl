@@ -33,8 +33,8 @@ uniform float endRandom;
 uniform float randomTransition;
 
 vec3 rand3(vec2 co){
-	float sinDot1 = sin(dot(co.xy ,vec2(12.9898,78.233)) + startRandom);
-	float sinDot2 = sin(dot(co.xy ,vec2(12.9898,78.233)) + endRandom);
+	float sinDot1 = sin(dot(co.xy ,vec2(12.9898,78.233)) + randomTransition + startRandom);
+	float sinDot2 = sin(dot(co.xy ,vec2(12.9898,78.233)) + randomTransition + endRandom);
     vec3 start = vec3(fract(sinDot1 * 498.2335650) * 2.0 - 1.0, fract(sinDot1 * 9640.43935658) * 2.0 - 1.0, fract(sinDot1 * 32334.34356435));
     vec3 end = vec3(fract(sinDot2 * 498.2335650) * 2.0 - 1.0, fract(sinDot2 * 9640.43935658) * 2.0 - 1.0, fract(sinDot2 * 32334.34356435));
 	return mix(start, end, randomTransition);
