@@ -90,8 +90,24 @@ public class ProgramManager {
 	
 	public EaglProgram ssao_blur;
 	public EaglUniform ssao_blur_blurDirection;
+
+	public EaglProgram post_tonemap;
+	public EaglUniform post_tonemap_exposure;
+	
+	public EaglProgram post_downscale8th;
+	public EaglUniform post_downscale8th_textureSize;
 	
 	public final GlobalRenderer renderer;
+	
+	public EaglProgram post_bloom_h;
+	public EaglProgram post_bloom_v;
+	public EaglUniform post_bloom_h_screenSizeInv;
+	public EaglUniform post_bloom_v_screenSizeInv;
+	
+	public EaglProgram bloom_combine_lens;
+	public EaglUniform bloom_combine_lens_startRandom;
+	public EaglUniform bloom_combine_lens_endRandom;
+	public EaglUniform bloom_combine_lens_randomTransition;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -132,6 +148,7 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("position").set1i(3);
 		gbuffer_combined.getUniform("lightDiffuse").set1i(4);
 		gbuffer_combined.getUniform("lightSpecular").set1i(5);
+		gbuffer_combined.getUniform("ssaoBuffer").set1i(6);
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_sun.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_sun.vsh");
@@ -142,7 +159,6 @@ public class ProgramManager {
 		light_sun.getUniform("normal").set1i(1);
 		light_sun.getUniform("position").set1i(2);
 		light_sun.getUniform("sunShadow").set1i(3);
-		light_sun.getUniform("ssaoBuffer").set1i(4);
 
 		light_sun_color = light_sun.getUniform("sunRGB");
 		light_sun_direction = light_sun.getUniform("sunDirection");
@@ -268,14 +284,14 @@ public class ProgramManager {
 		ssao_generate_matrix_v_invtrans = ssao_generate.getUniform("matrix_v_invtrans");
 		ssao_generate_matrix_p_inv = ssao_generate.getUniform("matrix_p_inv");
 		
-		Random r = new Random("go fuck yourself".hashCode());
+		Random r = new Random("444".hashCode());
 		for(int i = 0; i < 32; i++) {
 			
 			float x = r.nextFloat() * 2.0f - 1.0f;
 			float y = r.nextFloat() * 2.0f - 1.0f;
 			float z = r.nextFloat();
 			
-			float s = lerp(0.3f, 0.9f, r.nextFloat());
+			float s = lerp(0.5f, 0.9f, r.nextFloat());
 			float hypot = (1.0f / (float) Math.sqrt(x*x + y*y + z*z)) * (float)Math.pow(s, 2.0d);
 			x *= hypot;
 			y *= hypot;
@@ -292,6 +308,50 @@ public class ProgramManager {
 		ssao_blur.getUniform("linearDepth").set1i(1);
 		
 		ssao_blur_blurDirection = ssao_blur.getUniform("blurDirection");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_tonemap.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_tonemap.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_tonemap.fsh");
+		this.post_tonemap = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		post_tonemap.getUniform("tex").set1i(0);
+		post_tonemap.getUniform("bloomTex").set1i(1);
+		
+		post_tonemap_exposure = post_tonemap.getUniform("exposure");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_downscale8th.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_downscale8th.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_downscale8th.fsh");
+		this.post_downscale8th = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		post_downscale8th.getUniform("tex").set1i(0);
+		
+		post_downscale8th_textureSize = post_downscale8th.getUniform("textureSize");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_bloom_h.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_bloom_h.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_bloom_h.fsh");
+		this.post_bloom_h = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		post_bloom_h.getUniform("tex").set1i(0);
+		
+		post_bloom_h_screenSizeInv = post_bloom_h.getUniform("screenSizeInv");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_bloom_v.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_bloom_v.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_bloom_v.fsh");
+		this.post_bloom_v = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		post_bloom_v.getUniform("tex").set1i(0);
+		
+		post_bloom_v_screenSizeInv = post_bloom_v.getUniform("screenSizeInv");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/bloom_combine_lens.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "bloom_combine_lens.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "bloom_combine_lens.fsh");
+		this.bloom_combine_lens = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		bloom_combine_lens.getUniform("tex").set1i(0);
+		bloom_combine_lens.getUniform("bloom").set1i(1);
+
+		bloom_combine_lens_startRandom = bloom_combine_lens.getUniform("startRandom");
+		bloom_combine_lens_endRandom = bloom_combine_lens.getUniform("endRandom");
+		bloom_combine_lens_randomTransition = bloom_combine_lens.getUniform("randomTransition");
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -318,6 +378,10 @@ public class ProgramManager {
 		linearize_depth.destroy();
 		ssao_generate.destroy();
 		ssao_blur.destroy();
+		post_tonemap.destroy();
+		post_downscale8th.destroy();
+		post_bloom_h.destroy();
+		post_bloom_v.destroy();
 	}
 
 }

@@ -28,7 +28,6 @@ uniform sampler2D material;  // metallic, roughness, specular, ssr
 uniform sampler2D normal;    // normalXYZ, emission
 uniform sampler2D position;  // position
 uniform sampler2D sunShadow; // shadow
-uniform sampler2D ssaoBuffer;
 
 uniform vec3 sunRGB;
 uniform vec3 sunDirection;
@@ -85,8 +84,6 @@ void main() {
 		diffuseOut = vec3(0.1);
 		specularOut = vec3(0.0);
 	}
-	
-	diffuseOut *= texture(ssaoBuffer, v_texCoord).r;
 }
 
 #endif

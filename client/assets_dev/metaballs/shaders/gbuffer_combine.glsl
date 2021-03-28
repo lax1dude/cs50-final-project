@@ -37,6 +37,7 @@ uniform sampler2D position; // position
 
 uniform sampler2D lightDiffuse;
 uniform sampler2D lightSpecular;
+uniform sampler2D ssaoBuffer;
 
 void main() {
 
@@ -48,9 +49,8 @@ void main() {
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
 	
-	vec3 color = (diffuseV.rgb * lightDiffuseV) + lightSpecularV;
-	color = color / (color + vec3(1.0));
-	fragOut = vec4(pow(color, vec3(1.0/2.2)), 1.0);
+	vec3 color = (diffuseV.rgb * lightDiffuseV * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
+	fragOut = vec4(color, 1.0);
 }
 
 #endif

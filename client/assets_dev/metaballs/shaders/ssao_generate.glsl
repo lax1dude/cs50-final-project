@@ -55,6 +55,7 @@ void main() {
 		mat3 TBN = mat3(tangent, bitangent, normalV);
 		
 		float occlusion = 0.0;
+		float divisor = 0.0;
 		
 		for(int i = 0; i < 16; ++i) {
 			vec3 samplePos = fragPos + (TBN * kernel[i]) * radius;
@@ -67,10 +68,11 @@ void main() {
 			float sampleDepth = samplePos0.z / samplePos0.w;
 			
 			float rangeCheck = smoothstep(0.0, 1.0, radius / abs(fragPos.z - sampleDepth));
+			if(rangeCheck > 0.0) ++divisor;
 			occlusion += (sampleDepth >= samplePos.z ? 1.0 : 0.0) * rangeCheck;    
 		}
 		
-		fragOut = 1.0 - (occlusion / 16.0);
+		fragOut = 1.0 - (occlusion / max(divisor, 0.001));
 	}else {
     	fragOut = 1.0;
 	}

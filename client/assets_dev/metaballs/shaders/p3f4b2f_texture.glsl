@@ -33,7 +33,7 @@ void main()
 {
 	float intensity = max(dot(normalize(normal),normalize(vec3(1.0, 1.0, 0.0))), 0.0);
 	
-    fragOut = max(pow(intensity, 1.0/2.2), 0.4) * texture(tex, texCoord);
+    fragOut = max(pow(intensity, 1.0 / 2.2), 0.4) * texture(tex, texCoord);
 }
 
 #endif

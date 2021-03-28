@@ -24,7 +24,7 @@ uniform sampler2D linearDepth;
 
 uniform vec2 blurDirection;
 
-#define depthLimit 0.0001
+#define depthLimit 0.001
 
 void main() {
 	

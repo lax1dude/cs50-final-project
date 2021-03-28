@@ -32,6 +32,10 @@ public class GameClient {
 	
 	private GlobalRenderer globalRenderer = null;
 	private RenderScene scene = null;
+	
+	public GlobalRenderer getGlobalRenderer() {
+		return globalRenderer;
+	}
 
 	public float partialTicks = 0.0f;
 	public float totalTicksF = 0.0f;
@@ -41,7 +45,7 @@ public class GameClient {
 		debugMode = debug;
 		log.info("debug mode: {}", debug);
 		lastTick = System.nanoTime();
-		context = new EaglContext(ToolkitPlatform.desktop, Main.platform, GameConfiguration.gameName, 1);
+		context = new EaglContext(ToolkitPlatform.desktop, Main.platform, GameConfiguration.gameName, 1, 1);
 	}
 
 	public void run() {
@@ -244,6 +248,8 @@ public class GameClient {
 		float rdecell = 0.05f;
 		cameraPitchAccel *= rdecell;
 		cameraYawAccel *= rdecell;
+		
+		globalRenderer.tick();
 		
 	}
 	

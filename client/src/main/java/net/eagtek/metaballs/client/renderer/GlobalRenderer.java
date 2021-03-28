@@ -3,6 +3,8 @@ package net.eagtek.metaballs.client.renderer;
 import static org.lwjgl.opengles.GLES30.*;
 
 import java.io.InputStream;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
@@ -11,6 +13,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
+import org.lwjgl.system.MemoryStack;
 
 import net.eagtek.eagl.EaglFramebuffer;
 import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
@@ -73,9 +76,19 @@ public class GlobalRenderer {
 	
 	private final EaglFramebuffer lightShadowMap;
 
-	private final EaglFramebuffer linearDepthBuffer;
+	//private final EaglFramebuffer linearDepthBuffer;
 	private final EaglFramebuffer ambientOcclusionBuffer;
 	private final EaglFramebuffer ambientOcclusionBlur;
+
+	private final EaglFramebuffer postBufferA;
+	private final EaglFramebuffer postBufferB;
+	private final EaglFramebuffer postBufferC;
+	private final EaglFramebuffer exposureCalcTexture;
+	
+	private final EaglFramebuffer toneMapped;
+
+	private float exposure = 2.0f;
+	private float targetExposure = 2.0f;
 	
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
@@ -84,6 +97,14 @@ public class GlobalRenderer {
 	public double renderPosX;
 	public double renderPosY;
 	public double renderPosZ;
+
+	public final ColorTemperature colorTemperatures;
+	
+	private final Random rand;
+	private float grainStartRandom = 0.0f;
+	private float grainEndRandom = 0.0f;
+	
+	private boolean nextTick = true;
 	
 	public int getFramerate() {
 		return prevFramesPassed;
@@ -151,12 +172,17 @@ public class GlobalRenderer {
 			throw new RuntimeException("Could not load model files required for rendering", tt);
 		}
 		
+		//load color temp table =====================================================
+		
+		colorTemperatures = new ColorTemperature(ResourceLoader.loadResourceBytes("metaballs/temperatures.lut"));
+		
 		client.getScene().sunDirection = new Vector3f(1.0f, -1.0f, 0.0f).normalize();
 		//client.getScene().lightRenderers.add(new LightData(LightType.POINT, 5.0f, 0.0f, 0.0d, 1.0d, 0.0d));
 		
-		Random r = new Random();
+		this.rand = new Random();
+		
 		for(int i = 0 ; i < 35; ++i) {
-			client.getScene().lightRenderers.add(new LightData(LightType.POINT, r.nextInt(200), 0.0f, r.nextGaussian() * 20.0d, r.nextGaussian() * 3.0d + 4.0d, r.nextGaussian() * 20.0d).setRGB(r.nextFloat(), r.nextFloat(), r.nextFloat()).setDirection(0.0f, 1.0f, 0.0f));
+			client.getScene().lightRenderers.add(new LightData(LightType.POINT, rand.nextInt(200), 0.0f, rand.nextGaussian() * 20.0d, rand.nextGaussian() * 3.0d + 4.0d, rand.nextGaussian() * 20.0d).setRGB(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()).setDirection(0.0f, 1.0f, 0.0f));
 		}
 		
 		client.getScene().shadowLightRenderers.add(lightTest = (ShadowLightRenderer) new ShadowLightRenderer(LightType.SPOT, 100.0f, 0.2f, 0.0d, 5.0d, 0.0d).setRGB(1.0f, 1.0f, 1.0f).setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(20.0f));
@@ -172,16 +198,23 @@ public class GlobalRenderer {
 		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8, GL_RGB16F);
 		lightBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB16F, GL_RGB16F);
 
-		combinedBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB8);
+		combinedBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB16F);
 
 		sunShadowMap = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
 		sunShadowBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_R8);
 		
 		lightShadowMap = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
 		
-		linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
+		//linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		ambientOcclusionBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
 		ambientOcclusionBlur = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
+
+		postBufferA = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
+		postBufferB = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
+		postBufferC = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
+
+		toneMapped = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB);
+		exposureCalcTexture = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		
 	}
 
@@ -190,6 +223,7 @@ public class GlobalRenderer {
 	public static final Matrix4f matrixIdentity = new Matrix4f().identity();
 	
 	public void renderGame(RenderScene scene) {
+		
 		renderPosX = client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks;
 		renderPosY = client.prevRenderY + (client.renderY - client.prevRenderY) * client.partialTicks;
 		renderPosZ = client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks;
@@ -360,8 +394,8 @@ public class GlobalRenderer {
 				-GameConfiguration.sunShadowLODDDistance, 
 				GameConfiguration.sunShadowLODDDistance, 
 				-GameConfiguration.sunShadowLODDDistance, 
-				GameConfiguration.sunShadowLODDDistance, 
-				0f, 
+				GameConfiguration.sunShadowLODDDistance,
+				0f,
 				GameConfiguration.sunShadowDistance * 2.0f
 		);
 		cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
@@ -384,7 +418,7 @@ public class GlobalRenderer {
 		
 		int atlasLocation = 0;
 		
-		lightTest.setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(50.0f);
+		lightTest.setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(90.0f);
 		lightTest.pointsize = 30.0f;
 
 		lightTest.lightX = 5.0d;
@@ -411,10 +445,10 @@ public class GlobalRenderer {
 			renderPosY = s.lightY;
 			renderPosZ = s.lightZ;
 			float lightRadius = (float)Math.sqrt(s.emission) * 2.0f;
-			if(viewProjFustrum.testSphere(x, y, z, lightRadius)) {
+			if(viewProjFustrum.testSphere(x, y, z, lightRadius) && atlasLocation < 36) {
 				s.objectsInFrustum = new LinkedList();
 				cameraMatrix.identity().lookAlong(s.direction, up);
-				projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(Math.min((s.type == LightData.LightType.SPOT ? s.spotRadius : 90.0f) * MathUtil.toRadians * 2.25f, (float)Math.PI - 0.001f), 1.0f, 0.1f, lightRadius * 2.0f);
+				projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(Math.min(s.spotRadius * MathUtil.toRadians * 2.25f, 50.0f * MathUtil.toRadians * 2.25f), 1.0f, 0.1f, lightRadius);
 				cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
 				s.shadowMatrix.set(viewProjMatrix);
 				i.set(viewProjMatrix);
@@ -425,7 +459,7 @@ public class GlobalRenderer {
 						s.objectsInFrustum.add(r);
 					}
 				}
-				if(s.objectsInFrustum.size() > 0) {
+				if(s.objectsInFrustum.size() > 0 && atlasLocation < 36) {
 					s.atlasLocation = atlasLocation++;
 					int xx = s.atlasLocation % 6;
 					int yy = s.atlasLocation / 6;
@@ -481,6 +515,7 @@ public class GlobalRenderer {
 		
 		glDisable(GL_STENCIL_TEST);
 
+		/*
 		// ================================================= RENDER LINEAR DEPTH BUFFER =======================================================
 
 		linearDepthBuffer.setSize(w, h);
@@ -497,7 +532,8 @@ public class GlobalRenderer {
 		progManager.linearize_depth_farPlane.set1f(GameConfiguration.farPlane);
 		gBuffer.bindDepthTexture();
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-
+		 */
+		
 		// ================================================= RENDER AMBIENT OCCLUSION =======================================================
 		
 		ambientOcclusionBuffer.setSize(w / 2, h / 2);
@@ -515,46 +551,34 @@ public class GlobalRenderer {
 		progManager.ssao_generate_matrix_p_inv.setMatrix4f(projMatrix.invert(multipliedMatrix));
 		progManager.ssao_generate_matrix_v_invtrans.setMatrix4f(cameraMatrix.invert(multipliedMatrix).transpose());
 		updateMatrix(progManager.ssao_generate);
-		gBuffer.bindColorTexture(2, 0);
 		gBuffer.bindDepthTexture(1);
+		gBuffer.bindColorTexture(2, 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 
 		// ================================================= BLUR HORIZONTAL OCCLUSION =======================================================
 		
 		ambientOcclusionBlur.setSize(w / 2, h / 2);
 		ambientOcclusionBlur.bindFramebuffer();
-
-		glViewport(0, 0, w / 2, h / 2);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
-		glDepthMask(false);
 		
 		progManager.ssao_blur.use();
 		progManager.ssao_blur_blurDirection.set2f(4.0f / w, 0.0f);
 		updateMatrix(progManager.ssao_blur);
+		//linearDepthBuffer.bindColorTexture(0, 1);
+		gBuffer.bindDepthTexture(1);
 		ambientOcclusionBuffer.bindColorTexture(0, 0);
-		linearDepthBuffer.bindColorTexture(0, 1);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 
 		// ================================================= BLUR VERTICAL OCCLUSION =======================================================
 		
 		ambientOcclusionBuffer.setSize(w / 2, h / 2);
 		ambientOcclusionBuffer.bindFramebuffer();
-
-		glViewport(0, 0, w / 2, h / 2);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
-		glDepthMask(false);
 		
 		progManager.ssao_blur.use();
 		progManager.ssao_blur_blurDirection.set2f(0.0f, 4.0f / h);
 		updateMatrix(progManager.ssao_blur);
 		ambientOcclusionBlur.bindColorTexture(0, 0);
-		linearDepthBuffer.bindColorTexture(0, 1);
+		//linearDepthBuffer.bindColorTexture(0, 1);
+		gBuffer.bindDepthTexture(1);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		// ================================================= RENDER LIGHT SOURCE DIFFUSE AND SPECULAR =======================================================
@@ -731,24 +755,20 @@ public class GlobalRenderer {
 		// ================================================= RENDER SUN DIFFUSE AND SPECULAR =======================================================
 		
 		sunShadowBuffer.bindColorTexture(0, 3);
-		ambientOcclusionBuffer.bindColorTexture(0, 4);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		progManager.light_sun.use();
 		updateMatrix(progManager.light_sun);
-		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
 		
 		Vector3f sunDir = scene.sunDirection;
-		//Vector4f lookDir = cameraMatrix.transform(new Vector4f(0.0f, 0.0f, 1.0f, 1.0f)).normalize();
 		
 		progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
-		progManager.light_sun_color.set3f(1.0f, 1.0f, 1.0f);
-		//progManager.light_sun_lookdirection.set3f(lookDir.x, lookDir.y, lookDir.z);
+		
+		float b = 3.0f;
+		int temp = 5700;
+		progManager.light_sun_color.set3f(colorTemperatures.getLinearR(temp) * b, colorTemperatures.getLinearG(temp) * b, colorTemperatures.getLinearB(temp) * b);
+		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		
 		glDisable(GL_BLEND);
-		
 		glCullFace(GL_BACK);
 
 		// ================================================= COMBINE G BUFFERS =======================================================
@@ -768,6 +788,135 @@ public class GlobalRenderer {
 		gBuffer.bindColorTexture(3, 3);
 		lightBuffer.bindColorTexture(0, 4);
 		lightBuffer.bindColorTexture(1, 5);
+		ambientOcclusionBuffer.bindColorTexture(0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		// ================================================= DOWNSCALE =======================================================
+		
+		glDisable(GL_STENCIL_TEST);
+		
+		postBufferA.setSize(w, h);
+		postBufferA.bindFramebuffer();
+		
+		glViewport(0, 0, w / 2, h / 2);
+		
+		progManager.p3f2f_texture.use();
+		updateMatrix(progManager.p3f2f_texture);
+		combinedBuffer.bindColorTexture(0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		// ================================================= DOWNSCALE =======================================================
+		
+		postBufferB.setSize(w, h);
+		postBufferB.bindFramebuffer();
+		
+		glViewport(0, 0, w / 4, h / 4);
+		
+		progManager.p3f2f_texture.use();
+		modelMatrix.pushMatrix();
+		modelMatrix.translate(1.0f, 1.0f, 0.0f);
+		modelMatrix.scale(2.0f);
+		updateMatrix(progManager.p3f2f_texture);
+		postBufferA.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		modelMatrix.popMatrix();
+		
+		if(nextTick) {
+			// ================================================= DOWNSCALE =======================================================
+			
+			postBufferC.setSize(w, h);
+			postBufferC.bindFramebuffer();
+			
+			glViewport(0, 0, w / 8, h / 8);
+			
+			progManager.p3f2f_texture.use();
+			modelMatrix.pushMatrix();
+			modelMatrix.translate(1.0f, 1.0f, 0.0f);
+			modelMatrix.scale(2.0f);
+			updateMatrix(progManager.p3f2f_texture);
+			postBufferB.bindColorTexture(0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			modelMatrix.popMatrix();
+			
+			// ========================================= DOWNSCALE TO SINGLE PIXEL ==============================================
+			
+			exposureCalcTexture.setSize(1, 1);
+			exposureCalcTexture.bindFramebuffer();
+			
+			glViewport(0, 0, 1, 1);
+			
+			progManager.post_downscale8th.use();
+			progManager.post_downscale8th_textureSize.set2f(w, h);
+			postBufferC.bindColorTexture(0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			nextTick = false;
+		}
+
+		// ========================================= HORIZONTAL BLOOM ==============================================
+		
+		postBufferA.setSize(w, h);
+		postBufferA.bindFramebuffer();
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glViewport(0, 0, w / 4, h / 4);
+		
+		progManager.post_bloom_h.use();
+		progManager.post_bloom_h_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+		postBufferB.bindColorTexture(0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		// ========================================= VERTICAL BLOOM ==============================================
+		
+		postBufferC.setSize(w, h);
+		postBufferC.bindFramebuffer();
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glViewport(0, 0, w / 4, h / 4);
+		
+		progManager.post_bloom_v.use();
+		progManager.post_bloom_v_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+		postBufferA.bindColorTexture(0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		// ================================================= BLOOM COMBINE LENS =======================================================
+
+		postBufferA.setSize(w, h);
+		postBufferA.bindFramebuffer();
+
+		glViewport(0, 0, w, h);
+		
+		progManager.bloom_combine_lens.use();
+		progManager.bloom_combine_lens_startRandom.set1f(grainStartRandom);
+		progManager.bloom_combine_lens_endRandom.set1f(grainEndRandom);
+		progManager.bloom_combine_lens_randomTransition.set1f(client.partialTicks);
+		combinedBuffer.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		postBufferC.bindColorTexture(0, 1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		combinedBuffer.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		// ================================================= TONEMAP =======================================================
+
+		toneMapped.setSize(w, h);
+		toneMapped.bindFramebuffer();
+
+		glViewport(0, 0, w, h);
+		
+		progManager.post_tonemap.use();
+		progManager.post_tonemap_exposure.set1f(exposure);
+		postBufferA.bindColorTexture(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		// ================================================= RENDER FXAA =======================================================
@@ -790,7 +939,7 @@ public class GlobalRenderer {
 		progManager.post_fxaa_edgeThresholdMin.set1f(0.04f);
 		progManager.post_fxaa_screenSize.set2f(w, h);
 		
-		combinedBuffer.bindColorTexture(0, 0);
+		toneMapped.bindColorTexture(0, 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		++framesPassed;
@@ -833,6 +982,40 @@ public class GlobalRenderer {
 				(float)(z - renderPosZ)
 		);
 	}
+	
+	public void tick() {
+		
+		grainEndRandom = grainStartRandom;
+		grainStartRandom = rand.nextFloat();
+		
+		exposureCalcTexture.setSize(1, 1);
+		exposureCalcTexture.bindFramebuffer();
+		
+		glViewport(0, 0, 1, 1);
+		
+		if(!nextTick) {
+			float sceneBrightness = 1.0f;
+			
+			try(MemoryStack s = MemoryStack.stackPush()) {
+				FloatBuffer buf = s.malloc(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+				exposureCalcTexture.bindColorTexture(0);
+				glReadPixels(0, 0, 1, 1, GL_RED, GL_FLOAT, buf);
+				sceneBrightness = buf.get(0);
+			}
+			
+			nextTick = true;
+			
+			sceneBrightness += 0.1f;
+			sceneBrightness *= 3.0f;
+			
+			targetExposure = 1.0f / sceneBrightness;
+			
+			if(targetExposure < 0.3f) targetExposure = 0.3f;
+			
+			exposure += (targetExposure - exposure) * 0.03f;
+		}
+	}
+	
 	/*
 	public float toLocalX(double worldX) {
 		return (float)(worldX - (client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks));
@@ -863,9 +1046,13 @@ public class GlobalRenderer {
 		this.sunShadowMap.destroy();
 		this.sunShadowBuffer.destroy();
 		this.lightShadowMap.destroy();
-		this.linearDepthBuffer.destroy();
 		this.ambientOcclusionBuffer.destroy();
 		this.ambientOcclusionBlur.destroy();
+		this.postBufferA.destroy();
+		this.postBufferB.destroy();
+		this.postBufferC.destroy();
+		this.toneMapped.destroy();
+		this.exposureCalcTexture.destroy();
 	}
 
 }

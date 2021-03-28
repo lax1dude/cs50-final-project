@@ -2,6 +2,8 @@ package net.eagtek.metaballs.client.renderer;
 
 import org.joml.Vector3f;
 
+import net.eagtek.metaballs.client.GameClient;
+
 public class LightData {
 	
 	public static enum LightType {
@@ -38,6 +40,14 @@ public class LightData {
 		lightR = r;
 		lightG = g;
 		lightB = b;
+		return this;
+	}
+	
+	public LightData setTemperature(int kelvin) {
+		ColorTemperature temp = GameClient.instance.getGlobalRenderer().colorTemperatures;
+		lightR = temp.getLinearR(kelvin);
+		lightG = temp.getLinearG(kelvin);
+		lightB = temp.getLinearB(kelvin);
 		return this;
 	}
 	
