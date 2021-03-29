@@ -66,7 +66,7 @@ void main() {
 	vec3 color = vec3(texture(tex, lensDistort(v_texCoord,1.1)).r, texture(tex, lensDistort(v_texCoord,1.0)).gb);
 	color += texture(bloom, v_texCoord * 0.25 + 1.0).rgb * 0.15;
 	
-	vec3 grain = rand3(v_texCoord);
+	vec3 grain = rand3(v_texCoord) * 0.5;
 	color *= (0.9 + grain * 0.1);
 	color += grain * 0.01;
 	

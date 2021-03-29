@@ -80,7 +80,7 @@ public class OBJConverter {
 				b[idx++] = (byte)(iz); b[idx++] = (byte)(iz >> 8); b[idx++] = (byte)(iz >> 16); b[idx++] = (byte)(iz >> 24);
 				
 				if(normal) {
-					byte[] n = normals.get(f[i][2]-1);
+					byte[] n = normals.get(f[i][texture ? 2 : 1]-1);
 					
 					b[idx++] = n[0];
 					b[idx++] = n[1];
@@ -139,6 +139,7 @@ public class OBJConverter {
 		}
 		if(compress) flags |= 8;
 		if(index32) flags |= 16;
+		flags |= 32;
 		o.write(flags);
 		
 		o.writeUTF("\n\nthis file (c) "+DateTimeFormatter.ofPattern("MM/dd/yyyy").format(LocalDateTime.now())+" eagtek, all rights reserved\n\n");
@@ -192,7 +193,29 @@ public class OBJConverter {
 		}else {
 			ret = toCompress;
 		}
+
+		float minX = 0.0f;
+		float minY = 0.0f;
+		float minZ = 0.0f;
+		float maxX = 0.0f;
+		float maxY = 0.0f;
+		float maxZ = 0.0f;
 		
+		for(float[] f : vertexes) {
+			if(f[0] < minX) minX = f[0];
+			if(f[1] < minY) minY = f[1];
+			if(f[2] < minZ) minZ = f[2];
+			if(f[0] > maxX) maxX = f[0];
+			if(f[1] > maxY) maxY = f[1];
+			if(f[2] > maxZ) maxZ = f[2];
+		}
+
+		o.writeFloat(minX);
+		o.writeFloat(minY);
+		o.writeFloat(minZ);
+		o.writeFloat(maxX);
+		o.writeFloat(maxY);
+		o.writeFloat(maxZ);
 
 		o.writeInt(toCompress.length);
 		o.writeInt(ret.length);

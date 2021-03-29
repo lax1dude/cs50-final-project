@@ -8,7 +8,8 @@ public abstract class ObjectRenderer {
 	public abstract void renderReflectionMap(GlobalRenderer globalRenderer);
 	public abstract void renderShadow(GlobalRenderer globalRenderer);
 	public abstract void renderTransparent(GlobalRenderer globalRenderer);
-	
-	public abstract boolean isInFrustum(FrustumIntersection i);
+
+	public abstract boolean isInFrustum(GlobalRenderer i);
+	public abstract boolean isInFrustumWhenTransformed(GlobalRenderer i, FrustumIntersection s);
 
 }

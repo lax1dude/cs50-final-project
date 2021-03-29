@@ -22,6 +22,7 @@ public class EaglModelLoader {
 			boolean normal = (flags & 4) == 4;
 			boolean compress = (flags & 8) == 8;
 			boolean index32 = (flags & 16) == 16;
+			boolean newFormat = (flags & 32) == 32;
 			
 			d.readUTF();
 
@@ -31,6 +32,18 @@ public class EaglModelLoader {
 			int componentLen = 12;
 			if(texture) componentLen += 8;
 			if(normal) componentLen += 4;
+
+			float minX = 0.0f; float minY = 0.0f; float minZ = 0.0f;
+			float maxX = 0.0f; float maxY = 0.0f; float maxZ = 0.0f;
+			
+			if(newFormat) {
+				minX = d.readFloat();
+				minY = d.readFloat();
+				minZ = d.readFloat();
+				maxX = d.readFloat();
+				maxY = d.readFloat();
+				maxZ = d.readFloat();
+			}
 
 			int decompressedSize = d.readInt();
 			int compressedSize = d.readInt();
@@ -83,6 +96,13 @@ public class EaglModelLoader {
 			vao.buffers[0].upload(upload, true);
 			
 			vao.vertexes = vboEntries;
+
+			vao.minX = minX;
+			vao.minY = minY;
+			vao.minZ = minZ;
+			vao.maxX = maxX;
+			vao.maxY = maxY;
+			vao.maxZ = maxZ;
 			
 			if(vao.indexBuffer != null) {
 				upload.limit(upload.capacity()); upload.position(iboOffset);

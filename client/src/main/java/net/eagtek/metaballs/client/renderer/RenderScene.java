@@ -15,13 +15,13 @@ public class RenderScene {
 	
 	public boolean enableSun = true;
 	public Vector3f sunDirection = new Vector3f();
-	public float sunR = 1.0f;
-	public float sunG = 1.0f;
-	public float sunB = 1.0f;
+
+	public int sunKelvin = 3500;
+	public int skyKelvin = 10000;
 	
-	public RenderScene setSunBlackbody(float kelvin) {
-		return this;
-	}
+	public float sunBrightness = 100.0f;
+	public float skyBrightness = 1.0f;
+	public float sunSize = 1.0f;
 	
 	public RenderScene() {
 		

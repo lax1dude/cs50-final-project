@@ -109,6 +109,12 @@ public class ProgramManager {
 	public EaglUniform bloom_combine_lens_endRandom;
 	public EaglUniform bloom_combine_lens_randomTransition;
 	
+	public EaglProgram sky;
+	public EaglUniform sky_skyColor;
+	public EaglUniform sky_sunColor;
+	public EaglUniform sky_sunDirection;
+	public EaglUniform sky_sunSize;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -352,6 +358,16 @@ public class ProgramManager {
 		bloom_combine_lens_startRandom = bloom_combine_lens.getUniform("startRandom");
 		bloom_combine_lens_endRandom = bloom_combine_lens.getUniform("endRandom");
 		bloom_combine_lens_randomTransition = bloom_combine_lens.getUniform("randomTransition");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/sky.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "sky.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "sky.fsh");
+		this.sky = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		sky_skyColor = sky.getUniform("skyColor");
+		sky_sunColor = sky.getUniform("sunColor");
+		sky_sunDirection = sky.getUniform("sunDirection");
+		sky_sunSize = sky.getUniform("sunSize");
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -382,6 +398,8 @@ public class ProgramManager {
 		post_downscale8th.destroy();
 		post_bloom_h.destroy();
 		post_bloom_v.destroy();
+		bloom_combine_lens.destroy();
+		sky.destroy();
 	}
 
 }

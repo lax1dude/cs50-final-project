@@ -450,6 +450,9 @@ public class EaglContext {
 		int w = v.width() / resolutionDiv;
 		int h = v.height() / resolutionDiv;
 
+		w = (w / 4) * 4;
+		h = (h / 4) * 4;
+
 		int x = (v.width() - w) / 2;
 		int y = (v.height() - h) / 2;
 		

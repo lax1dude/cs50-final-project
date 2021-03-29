@@ -9,6 +9,7 @@ public abstract class TerrainRenderer {
 	public abstract void renderShadow(GlobalRenderer globalRenderer, int lod);
 	public abstract void renderTransparent(GlobalRenderer globalRenderer);
 	
-	public abstract boolean isInFrustum(FrustumIntersection i);
+	public abstract boolean isInFrustum(GlobalRenderer g);
+	public abstract boolean isInFrustumWhenTransformed(GlobalRenderer i, FrustumIntersection s);
 	
 }

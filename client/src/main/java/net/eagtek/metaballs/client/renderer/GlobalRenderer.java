@@ -13,6 +13,7 @@ import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
 import org.lwjgl.system.MemoryStack;
 
 import net.eagtek.eagl.EaglFramebuffer;
@@ -46,7 +47,7 @@ public class GlobalRenderer {
 	public final Matrix4f sunShadowProjViewC = new Matrix4f();
 	public final Matrix4f sunShadowProjViewD = new Matrix4f();
 	
-	public final FrustumIntersection viewProjFustrum = new FrustumIntersection();
+	public FrustumIntersection viewProjFustrum = new FrustumIntersection();
 	
 	public final ProgramManager progManager;
 	
@@ -64,6 +65,8 @@ public class GlobalRenderer {
 	private EaglVertexArray lightSphere = null;
 	private EaglVertexArray lightHemisphere = null;
 	private EaglVertexArray lightCone = null;
+	
+	private EaglVertexArray skyDome = null;
 	
 	private ShadowLightRenderer lightTest = null;
 
@@ -113,6 +116,10 @@ public class GlobalRenderer {
 	public GlobalRenderer(GameClient gameClient) {
 		client = gameClient;
 		progManager = new ProgramManager(this);
+
+		for(int i = 0; i < bbVertexes.length; ++i) {
+			bbVertexes[i] = new Vector4f();
+		}
 		
 		// setup test quad =====================================================
 		
@@ -166,6 +173,10 @@ public class GlobalRenderer {
 			
 			stream = ResourceLoader.loadResource("metaballs/models/lighthemisphere.mdl");
 			lightHemisphere = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			stream = ResourceLoader.loadResource("metaballs/models/skydome.mdl");
+			skyDome = EaglModelLoader.loadModel(stream);
 			stream.close();
 			
 		}catch(Throwable tt) {
@@ -222,16 +233,31 @@ public class GlobalRenderer {
 	public static final Vector3f up2 = new Vector3f(0.0f, 1.0f, 0.0f);
 	public static final Matrix4f matrixIdentity = new Matrix4f().identity();
 	
+	private static final float lerp(float a, float b, float f){
+	    return a + f * (b - a);
+	}
+	
 	public void renderGame(RenderScene scene) {
 		
 		renderPosX = client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks;
 		renderPosY = client.prevRenderY + (client.renderY - client.prevRenderY) * client.partialTicks;
 		renderPosZ = client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks;
 		
-		Vector3f sd = client.getScene().sunDirection;
+		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f).normalize();
-		sd.rotateZ(50.0f * MathUtil.toRadians);
-		//sd.rotateZ(((client.totalTicksF * 0.2f) % 360.0f) * MathUtil.toRadians);
+		//sd.rotateZ(120.0f * MathUtil.toRadians);
+		sd.rotateY(20.0f * MathUtil.toRadians);
+		sd.rotateZ((120.0f - ((client.totalTicksF * 0.1f) % 270.0f)) * MathUtil.toRadians);
+		
+		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f) + 0.5f, 0.0f);
+		
+		scene.skyBrightness = timeOfDay * 2.0f;
+		scene.sunBrightness = 200.0f;
+		
+		scene.sunSize = 0.25f;
+		
+		scene.sunKelvin = (int) lerp(1000.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
+		scene.skyKelvin = 20000;
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
@@ -285,13 +311,13 @@ public class GlobalRenderer {
 		Iterator<TerrainRenderer> terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderGBuffer(this);
+			r.renderGBuffer(this);
 		}
 		
 		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderGBuffer(this);
+			r.renderGBuffer(this);
 		}
 		
 		glDisable(GL_STENCIL_TEST);
@@ -333,13 +359,13 @@ public class GlobalRenderer {
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this, 0);
+			r.renderShadow(this, 0);
 		}
 		
 		objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this);
+			r.renderShadow(this);
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 1, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -359,13 +385,13 @@ public class GlobalRenderer {
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this, 1);
+			r.renderShadow(this, 1);
 		}
 		
 		objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this);
+			r.renderShadow(this);
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 2, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -385,7 +411,7 @@ public class GlobalRenderer {
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this, 2);
+			r.renderShadow(this, 2);
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 3, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -405,7 +431,7 @@ public class GlobalRenderer {
 		terrainRenderers = scene.terrainRenderers.iterator();
 		while(terrainRenderers.hasNext()) {
 			TerrainRenderer r = terrainRenderers.next();
-			if(r.isInFrustum(viewProjFustrum)) r.renderShadow(this, 3);
+			r.renderShadow(this, 3);
 		}
 		
 		// ================================================= RENDER LIGHT SHADOW MAPS =======================================================
@@ -418,13 +444,13 @@ public class GlobalRenderer {
 		
 		int atlasLocation = 0;
 		
-		lightTest.setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(90.0f);
+		lightTest.setDirection(-1.0f, -1.0f, -0.5f).setSpotRadius(50.0f);
 		lightTest.pointsize = 30.0f;
 
-		lightTest.lightX = 5.0d;
-		lightTest.lightY = 8.0d;
+		lightTest.lightX = 3.0d;
+		lightTest.lightY = 6.0d;
 		lightTest.lightZ = 1.0d;
-		lightTest.emission = 100.0f;
+		lightTest.emission = 200.0f;
 		
 		viewProjMatrix.popMatrix();
 		viewProjFustrum.set(viewProjMatrix);
@@ -436,6 +462,7 @@ public class GlobalRenderer {
 		
 		Iterator<ShadowLightRenderer> shadowLightRenderers = scene.shadowLightRenderers.iterator();
 		FrustumIntersection i = new FrustumIntersection();
+		FrustumIntersection old = viewProjFustrum;
 		while(shadowLightRenderers.hasNext()) {
 			ShadowLightRenderer s = shadowLightRenderers.next();
 			float x = (float)(s.lightX - oldRPX);
@@ -452,10 +479,11 @@ public class GlobalRenderer {
 				cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
 				s.shadowMatrix.set(viewProjMatrix);
 				i.set(viewProjMatrix);
+				viewProjFustrum = i;
 				objectRenderers = scene.objectRenderers.iterator();
 				while(objectRenderers.hasNext()) {
 					ObjectRenderer r = objectRenderers.next();
-					if(r.isInFrustum(i)) {
+					if(r.isInFrustum(this)) {
 						s.objectsInFrustum.add(r);
 					}
 				}
@@ -470,6 +498,7 @@ public class GlobalRenderer {
 						r.renderShadow(this);
 					}
 				}
+				viewProjFustrum = old;
 			}
 		}
 		
@@ -747,11 +776,6 @@ public class GlobalRenderer {
 		
 		glDisable(GL_CULL_FACE);
 		
-		projMatrix.identity();
-		cameraMatrix.identity();
-		viewProjMatrix.identity();
-		modelMatrix.clear();
-		
 		// ================================================= RENDER SUN DIFFUSE AND SPECULAR =======================================================
 		
 		sunShadowBuffer.bindColorTexture(0, 3);
@@ -761,10 +785,9 @@ public class GlobalRenderer {
 		Vector3f sunDir = scene.sunDirection;
 		
 		progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
-		
-		float b = 3.0f;
-		int temp = 5700;
-		progManager.light_sun_color.set3f(colorTemperatures.getLinearR(temp) * b, colorTemperatures.getLinearG(temp) * b, colorTemperatures.getLinearB(temp) * b);
+
+		int kelvin = scene.sunKelvin;
+		progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * 0.1f);
 		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
@@ -792,6 +815,32 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		// =================================================== RENDER SKY =======================================================
+
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0x0);
+		glStencilFunc(GL_EQUAL, 0, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+		
+		progManager.sky.use();
+		updateMatrix(progManager.sky);
+
+		kelvin = scene.skyKelvin;
+		progManager.sky_skyColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.skyBrightness, colorTemperatures.getLinearG(kelvin) * scene.skyBrightness, colorTemperatures.getLinearB(kelvin) * scene.skyBrightness);
+		
+		kelvin = scene.sunKelvin;
+		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness);
+		
+		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+		progManager.sky_sunSize.set1f(scene.sunSize);
+		
+		skyDome.drawAll(GL_TRIANGLES);
+		
+		projMatrix.identity();
+		cameraMatrix.identity();
+		viewProjMatrix.identity();
+		modelMatrix.clear();
 		
 		// ================================================= DOWNSCALE =======================================================
 		
@@ -1016,6 +1065,80 @@ public class GlobalRenderer {
 		}
 	}
 	
+	private final Vector4f[] bbVertexes = new Vector4f[8];
+	
+	public boolean testBBFrustum(float minX, float minY, float minZ, float maxX, float maxY, float maxZ, Matrix4f modelMatrix, FrustumIntersection viewProjFustrum2) {
+
+		bbVertexes[0].x = minX;
+		bbVertexes[0].y = minY;
+		bbVertexes[0].z = minZ;
+		bbVertexes[0].w = 1.0f;
+		
+		bbVertexes[1].x = minX;
+		bbVertexes[1].y = minY;
+		bbVertexes[1].z = maxZ;
+		bbVertexes[1].w = 1.0f;
+		
+		bbVertexes[2].x = maxX;
+		bbVertexes[2].y = minY;
+		bbVertexes[2].z = maxZ;
+		bbVertexes[2].w = 1.0f;
+		
+		bbVertexes[3].x = maxX;
+		bbVertexes[3].y = minY;
+		bbVertexes[3].z = minZ;
+		bbVertexes[3].w = 1.0f;
+		
+		bbVertexes[4].x = minX;
+		bbVertexes[4].y = maxY;
+		bbVertexes[4].z = minZ;
+		bbVertexes[4].w = 1.0f;
+		
+		bbVertexes[5].x = minX;
+		bbVertexes[5].y = maxY;
+		bbVertexes[5].z = maxZ;
+		bbVertexes[5].w = 1.0f;
+		
+		bbVertexes[6].x = maxX;
+		bbVertexes[6].y = maxY;
+		bbVertexes[6].z = maxZ;
+		bbVertexes[6].w = 1.0f;
+		
+		bbVertexes[7].x = maxX;
+		bbVertexes[7].y = maxY;
+		bbVertexes[7].z = minZ;
+		bbVertexes[7].w = 1.0f;
+		
+		modelMatrix.transform(bbVertexes[0]);
+		modelMatrix.transform(bbVertexes[1]);
+		modelMatrix.transform(bbVertexes[2]);
+		modelMatrix.transform(bbVertexes[3]);
+		modelMatrix.transform(bbVertexes[4]);
+		modelMatrix.transform(bbVertexes[5]);
+		modelMatrix.transform(bbVertexes[6]);
+		modelMatrix.transform(bbVertexes[7]);
+
+		float outMinX = 0.0f;
+		float outMinY = 0.0f;
+		float outMinZ = 0.0f;
+		float outMaxX = 0.0f;
+		float outMaxY = 0.0f;
+		float outMaxZ = 0.0f;
+
+		for(int i = 0; i < 8; ++i) {
+			if(bbVertexes[i].x < outMinX || outMinX == 0.0f) outMinX = bbVertexes[i].x;
+			if(bbVertexes[i].y < outMinY || outMinY == 0.0f) outMinY = bbVertexes[i].y;
+			if(bbVertexes[i].z < outMinZ || outMinZ == 0.0f) outMinZ = bbVertexes[i].z;
+			if(bbVertexes[i].x > outMaxX || outMaxX == 0.0f) outMaxX = bbVertexes[i].x;
+			if(bbVertexes[i].y > outMaxY || outMaxY == 0.0f) outMaxY = bbVertexes[i].y;
+			if(bbVertexes[i].z > outMaxZ || outMaxZ == 0.0f) outMaxZ = bbVertexes[i].z;
+		}
+		
+		//System.out.println("[" + outMinX + ", " + outMinY + ", " + outMinZ + "] [" + outMaxX + ", " + outMaxY + ", " + outMaxZ + "]");
+		
+		return viewProjFustrum2.testAab(outMinX, outMinY, outMinZ, outMaxX, outMaxY, outMaxZ);
+	}
+	
 	/*
 	public float toLocalX(double worldX) {
 		return (float)(worldX - (client.prevRenderX + (client.renderX - client.prevRenderX) * client.partialTicks));
@@ -1053,6 +1176,7 @@ public class GlobalRenderer {
 		this.postBufferC.destroy();
 		this.toneMapped.destroy();
 		this.exposureCalcTexture.destroy();
+		this.skyDome.destroy();
 	}
 
 }

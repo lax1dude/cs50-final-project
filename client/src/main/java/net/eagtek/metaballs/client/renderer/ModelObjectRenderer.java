@@ -72,23 +72,21 @@ public class ModelObjectRenderer extends ObjectRenderer {
 
 	@Override
 	public void renderGBuffer(GlobalRenderer globalRenderer) {
-		ProgramManager m = globalRenderer.progManager;
-		m.gbuffer_3f_4b_2f_uniform.use();
-		m.gbuffer_3f_4b_2f_uniform_ditherBlend.set1f(ditherBlend);
-		m.gbuffer_3f_4b_2f_uniform_specular.set1f(specular);
-		m.gbuffer_3f_4b_2f_uniform_metallic.set1f(metallic);
-		m.gbuffer_3f_4b_2f_uniform_roughness.set1f(roughness);
-		m.gbuffer_3f_4b_2f_uniform_ssr.set1f(ssr);
-		m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
 		globalRenderer.modelMatrix.pushMatrix();
-		globalRenderer.translateToWorldCoords(posX, posY, posZ);
-		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotateY(rotationY * MathUtil.toRadians);
-		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotateX(rotationX * MathUtil.toRadians);
-		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotateZ(rotationZ * MathUtil.toRadians);
-		if(scale != 1.0f) globalRenderer.modelMatrix.scale(scale);
-		GLStateManager.bindTexture2D(texture2D);
-		globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
-		array.drawAll(drawmode);
+		transform(globalRenderer);
+		if(isInFrustum(globalRenderer)) {
+			ProgramManager m = globalRenderer.progManager;
+			m.gbuffer_3f_4b_2f_uniform.use();
+			m.gbuffer_3f_4b_2f_uniform_ditherBlend.set1f(ditherBlend);
+			m.gbuffer_3f_4b_2f_uniform_specular.set1f(specular);
+			m.gbuffer_3f_4b_2f_uniform_metallic.set1f(metallic);
+			m.gbuffer_3f_4b_2f_uniform_roughness.set1f(roughness);
+			m.gbuffer_3f_4b_2f_uniform_ssr.set1f(ssr);
+			m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
+			GLStateManager.bindTexture2D(texture2D);
+			globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
+			array.drawAll(drawmode);
+		}
 		globalRenderer.modelMatrix.popMatrix();
 	}
 
@@ -99,17 +97,23 @@ public class ModelObjectRenderer extends ObjectRenderer {
 
 	@Override
 	public void renderShadow(GlobalRenderer globalRenderer) {
-		ProgramManager m = globalRenderer.progManager;
-		m.shadow_3f_4b_2f.use();
 		globalRenderer.modelMatrix.pushMatrix();
+		transform(globalRenderer);
+		if(isInFrustum(globalRenderer)) {
+			ProgramManager m = globalRenderer.progManager;
+			m.shadow_3f_4b_2f.use();
+			globalRenderer.updateMatrix(m.shadow_3f_4b_2f);
+			array.drawAll(drawmode);
+		}
+		globalRenderer.modelMatrix.popMatrix();
+	}
+	
+	private void transform(GlobalRenderer globalRenderer) {
 		globalRenderer.translateToWorldCoords(posX, posY, posZ);
 		if(rotationY != 0.0f) globalRenderer.modelMatrix.rotateY(rotationY * MathUtil.toRadians);
 		if(rotationX != 0.0f) globalRenderer.modelMatrix.rotateX(rotationX * MathUtil.toRadians);
 		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotateZ(rotationZ * MathUtil.toRadians);
 		if(scale != 1.0f) globalRenderer.modelMatrix.scale(scale);
-		globalRenderer.updateMatrix(m.shadow_3f_4b_2f);
-		array.drawAll(drawmode);
-		globalRenderer.modelMatrix.popMatrix();
 	}
 
 	@Override
@@ -118,8 +122,17 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	}
 
 	@Override
-	public boolean isInFrustum(FrustumIntersection i) {
-		return true;
+	public boolean isInFrustum(GlobalRenderer i) {
+		return i.testBBFrustum(array.minX, array.minY, array.minZ, array.maxX, array.maxY, array.maxZ, i.modelMatrix, i.viewProjFustrum);
+	}
+	
+	@Override
+	public boolean isInFrustumWhenTransformed(GlobalRenderer i, FrustumIntersection s) {
+		i.modelMatrix.pushMatrix();
+		transform(i);
+		boolean b = i.testBBFrustum(array.minX, array.minY, array.minZ, array.maxX, array.maxY, array.maxZ, i.modelMatrix, s);
+		i.modelMatrix.popMatrix();
+		return b;
 	}
 
 }

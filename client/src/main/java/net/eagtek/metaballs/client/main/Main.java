@@ -2,12 +2,15 @@ package net.eagtek.metaballs.client.main;
 
 import java.io.File;
 
+import javax.swing.JOptionPane;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
+import net.eagtek.eagl.EaglContext;
 import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.metaballs.client.GameClient;
 import net.eagtek.metaballs.client.GameConfiguration;
@@ -18,6 +21,8 @@ public class Main {
 	
 	public static String[] cmdArgs = null;
 	public static OptionSet cmdOpts = null;
+	
+	public static EaglContext.ContextPlatform platform = EaglContext.ContextPlatform.angle;
 	
 	public static void main(String[] args) {
 		Thread.currentThread().setName("Client Thread");
@@ -32,6 +37,7 @@ public class Main {
 		OptionParser optionparser = new OptionParser();
 		optionparser.accepts("debug");
 		OptionSpec<File> assets = optionparser.accepts("dev-assets").withOptionalArg().ofType(File.class);
+		OptionSpec<String> plaf = optionparser.accepts("platform").withOptionalArg().defaultsTo("default");
 		
 		cmdOpts = optionparser.parse(cmdArgs);
 		
@@ -39,6 +45,13 @@ public class Main {
 			File f = assets.value(cmdOpts).getAbsoluteFile();
 			ResourceLoader.registerLoader(new ResourceLoader.ResourceLoaderFolder(f));
 			log.info("Additional assets directory: {}", f.getAbsolutePath());
+		}
+		
+		for(EaglContext.ContextPlatform s : EaglContext.ContextPlatform.values()) {
+			if(s.id.equals(plaf.value(cmdOpts))) {
+				platform = s;
+				break;
+			}
 		}
 		
 		GameClient.instance.run();

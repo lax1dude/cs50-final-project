@@ -39,6 +39,13 @@ public class EaglVertexArray {
 	
 	public final int glObject;
 	
+	public float minX = 0.0f;
+	public float minY = 0.0f;
+	public float minZ = 0.0f;
+	public float maxX = 0.0f;
+	public float maxY = 0.0f;
+	public float maxZ = 0.0f;
+	
 	public EaglVertexArray(EaglVertexBuffer[] buffersv, VertexAttribPointer[] pointersv, EaglIndexBuffer indexBufferv) {
 		buffers = buffersv;
 		pointers = pointersv;
