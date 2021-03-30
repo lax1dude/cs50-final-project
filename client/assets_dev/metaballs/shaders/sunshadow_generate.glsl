@@ -30,6 +30,8 @@ uniform mat4 shadowMatrixD;
 
 uniform float randTimer;
 
+uniform int softShadow;
+
 float rand(vec2 co) {
     return fract(sin(dot(co.xy, vec2(12.9898,78.233)) + randTimer) * 43758.5453);
 }
@@ -75,36 +77,44 @@ void main() {
 				fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.50, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 			}
 		}else {
+			if(softShadow == 1) {
+				float accum = 0.0;
+				float sampleWeight = 1.0 / 6.0;
+				
+				vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
+				
+				for(float i = 0.0; i < 6.0; ++i) {
+					vec4 rot = rotationMatrix(normalC, i * (360.0 / 3.0) * 0.017453293) * rotate90;
+					vec4 sampleLoc = shadowMatrixB * vec4(pos.xyz + rot.xyz * (i < 3.0 ? 0.035 : 0.07) * blurSize, 1.0);
+					
+					sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
+					accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
+				}
+				
+				fragOut = max(accum * 2.0 - 1.0, 0.0);
+			}else {
+				fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
+			}
+		}
+	} else {
+		if(softShadow == 1) {
 			float accum = 0.0;
-			float sampleWeight = 1.0 / 6.0;
+			float sampleWeight = 1.0 / 15.0;
 			
 			vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
 			
-			for(float i = 0.0; i < 6.0; ++i) {
-				vec4 rot = rotationMatrix(normalC, i * (360.0 / 3.0) * 0.017453293) * rotate90;
-				vec4 sampleLoc = shadowMatrixB * vec4(pos.xyz + rot.xyz * (i < 3.0 ? 0.035 : 0.07) * blurSize, 1.0);
+			for(float i = 0.0; i < 15.0; ++i) {
+				vec4 rot = rotationMatrix(normalC, i * (360.0 / 7.0) * 0.017453293) * rotate90;
+				vec4 sampleLoc = shadowMatrixA * vec4(pos.xyz + rot.xyz * (i < 7.0 ? 0.07 : 0.14) * blurSize, 1.0);
 				
 				sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-				accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
+				accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
 			}
 			
 			fragOut = max(accum * 2.0 - 1.0, 0.0);
+		}else {
+			fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.0, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 		}
-	} else {
-		float accum = 0.0;
-		float sampleWeight = 1.0 / 15.0;
-		
-		vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
-		
-		for(float i = 0.0; i < 15.0; ++i) {
-			vec4 rot = rotationMatrix(normalC, i * (360.0 / 7.0) * 0.017453293) * rotate90;
-			vec4 sampleLoc = shadowMatrixA * vec4(pos.xyz + rot.xyz * (i < 7.0 ? 0.07 : 0.14) * blurSize, 1.0);
-			
-			sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-			accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
-		}
-		
-		fragOut = max(accum * 2.0 - 1.0, 0.0);
 	}
 }
 

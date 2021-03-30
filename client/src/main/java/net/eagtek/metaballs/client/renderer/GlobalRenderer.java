@@ -14,6 +14,7 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.opengles.EXTTextureFilterAnisotropic;
 import org.lwjgl.system.MemoryStack;
 
 import net.eagtek.eagl.EaglFramebuffer;
@@ -52,15 +53,16 @@ public class GlobalRenderer {
 	public final ProgramManager progManager;
 	
 	private final EaglVertexArray quadArray;
+	
 	private final EaglImage2D testGraphic;
 	private final EaglImage2D bananaTexture;
+	private final EaglImage2D dirtTexture;
+	private final EaglImage2D testModelTexture;
 	
-	private ModelTerrainRenderer testModelRenderer = null;
+	private ModelObjectRenderer testModelRenderer = null;
 	private ModelObjectRenderer longArmsRenderer = null;
 	private ModelObjectRenderer bananaRenderer = null;
 	private ModelObjectRenderer bananaRenderer2 = null;
-	
-	private final EaglImage2D testModelTexture;
 
 	private EaglVertexArray lightSphere = null;
 	private EaglVertexArray lightHemisphere = null;
@@ -79,7 +81,7 @@ public class GlobalRenderer {
 	
 	private final EaglFramebuffer lightShadowMap;
 
-	//private final EaglFramebuffer linearDepthBuffer;
+	private final EaglFramebuffer linearDepthBuffer;
 	private final EaglFramebuffer ambientOcclusionBuffer;
 	private final EaglFramebuffer ambientOcclusionBlur;
 
@@ -144,6 +146,9 @@ public class GlobalRenderer {
 		testGraphic = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/icon64.png"));
 		testModelTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/longarms_texture.png"));
 		bananaTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/banana_texture.png"));
+		dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
+		
+		dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
 		//load test model =====================================================
 		
@@ -151,16 +156,16 @@ public class GlobalRenderer {
 			InputStream stream;
 
 			stream = ResourceLoader.loadResource("metaballs/models/testscene.mdl");
-			client.getScene().terrainRenderers.add(testModelRenderer = new ModelTerrainRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject));
+			client.getScene().objectRenderers.add(testModelRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/longarms.mdl");
-			client.getScene().objectRenderers.add(longArmsRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject));
+			client.getScene().objectRenderers.add(longArmsRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/banana.mdl");
-			client.getScene().objectRenderers.add(bananaRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), bananaTexture.glObject));
-			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject));
+			client.getScene().objectRenderers.add(bananaRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque));
+			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/lightcone.mdl");
@@ -216,7 +221,7 @@ public class GlobalRenderer {
 		
 		lightShadowMap = new EaglFramebuffer(DepthBufferType.DEPTH24_TEXTURE);
 		
-		//linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
+		linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		ambientOcclusionBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
 		ambientOcclusionBlur = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
 
@@ -246,18 +251,22 @@ public class GlobalRenderer {
 		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f).normalize();
 		//sd.rotateZ(120.0f * MathUtil.toRadians);
+		sd.rotateZ((100.0f - ((client.totalTicksF * 0.025f) % 180.0f)) * MathUtil.toRadians);
 		sd.rotateY(20.0f * MathUtil.toRadians);
-		sd.rotateZ((120.0f - ((client.totalTicksF * 0.1f) % 270.0f)) * MathUtil.toRadians);
 		
-		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f) + 0.5f, 0.0f);
+		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
 		
 		scene.skyBrightness = timeOfDay * 2.0f;
 		scene.sunBrightness = 200.0f;
 		
-		scene.sunSize = 0.25f;
+		scene.sunSize = 0.15f;
 		
 		scene.sunKelvin = (int) lerp(1000.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
 		scene.skyKelvin = 20000;
+		
+		scene.fogKelvin = 6000;
+		
+		scene.fogDensity = 0.01f;
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
@@ -308,16 +317,12 @@ public class GlobalRenderer {
 		bananaRenderer2.setMaterial(0.0f, 0.0f, 0.6f, 0.2f, 0.0f, 0.0f);
 		bananaRenderer2.setPosition(-22.0d, 4.0d, 13.0d).setRotation(150.0f, -160.0f, -75.0f).setScale(5.0f);
 		
-		Iterator<TerrainRenderer> terrainRenderers = scene.terrainRenderers.iterator();
-		while(terrainRenderers.hasNext()) {
-			TerrainRenderer r = terrainRenderers.next();
-			r.renderGBuffer(this);
-		}
-		
 		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			r.renderGBuffer(this);
+			if(r.shouldRenderPass(RenderPass.G_BUFFER)) {
+				r.renderPass(RenderPass.G_BUFFER, this);
+			}
 		}
 		
 		glDisable(GL_STENCIL_TEST);
@@ -355,17 +360,13 @@ public class GlobalRenderer {
 		
 		glClearDepthf(0.0f);
 		glClear(GL_DEPTH_BUFFER_BIT);
-
-		terrainRenderers = scene.terrainRenderers.iterator();
-		while(terrainRenderers.hasNext()) {
-			TerrainRenderer r = terrainRenderers.next();
-			r.renderShadow(this, 0);
-		}
 		
 		objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			r.renderShadow(this);
+			if(r.shouldRenderPass(RenderPass.SHADOW_A)) {
+				r.renderPass(RenderPass.SHADOW_A, this);
+			}
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 1, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -382,16 +383,12 @@ public class GlobalRenderer {
 		sunShadowProjViewB.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		terrainRenderers = scene.terrainRenderers.iterator();
-		while(terrainRenderers.hasNext()) {
-			TerrainRenderer r = terrainRenderers.next();
-			r.renderShadow(this, 1);
-		}
-		
 		objectRenderers = scene.objectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
-			r.renderShadow(this);
+			if(r.shouldRenderPass(RenderPass.SHADOW_B)) {
+				r.renderPass(RenderPass.SHADOW_B, this);
+			}
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 2, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -408,10 +405,12 @@ public class GlobalRenderer {
 		sunShadowProjViewC.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		terrainRenderers = scene.terrainRenderers.iterator();
-		while(terrainRenderers.hasNext()) {
-			TerrainRenderer r = terrainRenderers.next();
-			r.renderShadow(this, 2);
+		objectRenderers = scene.objectRenderers.iterator();
+		while(objectRenderers.hasNext()) {
+			ObjectRenderer r = objectRenderers.next();
+			if(r.shouldRenderPass(RenderPass.SHADOW_C)) {
+				r.renderPass(RenderPass.SHADOW_C, this);
+			}
 		}
 		
 		glViewport(GameConfiguration.sunShadowMapResolution * 3, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
@@ -428,10 +427,12 @@ public class GlobalRenderer {
 		sunShadowProjViewD.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		terrainRenderers = scene.terrainRenderers.iterator();
-		while(terrainRenderers.hasNext()) {
-			TerrainRenderer r = terrainRenderers.next();
-			r.renderShadow(this, 3);
+		objectRenderers = scene.objectRenderers.iterator();
+		while(objectRenderers.hasNext()) {
+			ObjectRenderer r = objectRenderers.next();
+			if(r.shouldRenderPass(RenderPass.SHADOW_D)) {
+				r.renderPass(RenderPass.SHADOW_D, this);
+			}
 		}
 		
 		// ================================================= RENDER LIGHT SHADOW MAPS =======================================================
@@ -483,7 +484,7 @@ public class GlobalRenderer {
 				objectRenderers = scene.objectRenderers.iterator();
 				while(objectRenderers.hasNext()) {
 					ObjectRenderer r = objectRenderers.next();
-					if(r.isInFrustum(this)) {
+					if(r.shouldRenderPass(RenderPass.LIGHT_SHADOW) && r.isInFrustum(this)) {
 						s.objectsInFrustum.add(r);
 					}
 				}
@@ -495,7 +496,7 @@ public class GlobalRenderer {
 					objectRenderers = s.objectsInFrustum.iterator();
 					while(objectRenderers.hasNext()) {
 						ObjectRenderer r = objectRenderers.next();
-						r.renderShadow(this);
+						r.renderPass(RenderPass.LIGHT_SHADOW, this);
 					}
 				}
 				viewProjFustrum = old;
@@ -536,6 +537,7 @@ public class GlobalRenderer {
 		progManager.sunshadow_generate_matrixC.setMatrix4f(sunShadowProjViewC);
 		progManager.sunshadow_generate_matrixD.setMatrix4f(sunShadowProjViewD);
 		progManager.sunshadow_generate_randTimer.set1f(client.totalTicksF % 100.0f);
+		progManager.sunshadow_generate_softShadow.set1i(GameConfiguration.enableSoftShadows ? 1 : 0);
 
 		gBuffer.bindColorTexture(2, 0);
 		gBuffer.bindColorTexture(3, 1);
@@ -543,8 +545,7 @@ public class GlobalRenderer {
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		glDisable(GL_STENCIL_TEST);
-
-		/*
+		
 		// ================================================= RENDER LINEAR DEPTH BUFFER =======================================================
 
 		linearDepthBuffer.setSize(w, h);
@@ -561,54 +562,61 @@ public class GlobalRenderer {
 		progManager.linearize_depth_farPlane.set1f(GameConfiguration.farPlane);
 		gBuffer.bindDepthTexture();
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-		 */
 		
-		// ================================================= RENDER AMBIENT OCCLUSION =======================================================
-		
-		ambientOcclusionBuffer.setSize(w / 2, h / 2);
-		ambientOcclusionBuffer.bindFramebuffer();
-
-		glViewport(0, 0, w / 2, h / 2);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
-		glDepthMask(false);
-		
-		progManager.ssao_generate.use();
-		progManager.ssao_generate_randomTime.set1f(client.totalTicksF);
-		progManager.ssao_generate_matrix_p_inv.setMatrix4f(projMatrix.invert(multipliedMatrix));
-		progManager.ssao_generate_matrix_v_invtrans.setMatrix4f(cameraMatrix.invert(multipliedMatrix).transpose());
-		updateMatrix(progManager.ssao_generate);
-		gBuffer.bindDepthTexture(1);
-		gBuffer.bindColorTexture(2, 0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-
-		// ================================================= BLUR HORIZONTAL OCCLUSION =======================================================
-		
-		ambientOcclusionBlur.setSize(w / 2, h / 2);
-		ambientOcclusionBlur.bindFramebuffer();
-		
-		progManager.ssao_blur.use();
-		progManager.ssao_blur_blurDirection.set2f(4.0f / w, 0.0f);
-		updateMatrix(progManager.ssao_blur);
-		//linearDepthBuffer.bindColorTexture(0, 1);
-		gBuffer.bindDepthTexture(1);
-		ambientOcclusionBuffer.bindColorTexture(0, 0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-
-		// ================================================= BLUR VERTICAL OCCLUSION =======================================================
-		
-		ambientOcclusionBuffer.setSize(w / 2, h / 2);
-		ambientOcclusionBuffer.bindFramebuffer();
-		
-		progManager.ssao_blur.use();
-		progManager.ssao_blur_blurDirection.set2f(0.0f, 4.0f / h);
-		updateMatrix(progManager.ssao_blur);
-		ambientOcclusionBlur.bindColorTexture(0, 0);
-		//linearDepthBuffer.bindColorTexture(0, 1);
-		gBuffer.bindDepthTexture(1);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
+		if(GameConfiguration.enableAmbientOcclusion) {
+			// ================================================= RENDER AMBIENT OCCLUSION =======================================================
+			
+			ambientOcclusionBuffer.setSize(w / 2, h / 2);
+			ambientOcclusionBuffer.bindFramebuffer();
+	
+			glViewport(0, 0, w / 2, h / 2);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_CULL_FACE);
+			glDepthMask(false);
+			
+			progManager.ssao_generate.use();
+			progManager.ssao_generate_randomTime.set1f(client.totalTicksF);
+			progManager.ssao_generate_matrix_p_inv.setMatrix4f(projMatrix.invert(multipliedMatrix));
+			progManager.ssao_generate_matrix_v_invtrans.setMatrix4f(cameraMatrix.invert(multipliedMatrix).transpose());
+			updateMatrix(progManager.ssao_generate);
+			gBuffer.bindDepthTexture(1);
+			gBuffer.bindColorTexture(2, 0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+	
+			// ================================================= BLUR HORIZONTAL OCCLUSION =======================================================
+			
+			ambientOcclusionBlur.setSize(w / 2, h / 2);
+			ambientOcclusionBlur.bindFramebuffer();
+			
+			progManager.ssao_blur.use();
+			progManager.ssao_blur_blurDirection.set2f(4.0f / w, 0.0f);
+			updateMatrix(progManager.ssao_blur);
+			linearDepthBuffer.bindColorTexture(0, 1);
+			//gBuffer.bindDepthTexture(1);
+			ambientOcclusionBuffer.bindColorTexture(0, 0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+	
+			// ================================================= BLUR VERTICAL OCCLUSION =======================================================
+			
+			ambientOcclusionBuffer.setSize(w / 2, h / 2);
+			ambientOcclusionBuffer.bindFramebuffer();
+			
+			progManager.ssao_blur.use();
+			progManager.ssao_blur_blurDirection.set2f(0.0f, 4.0f / h);
+			updateMatrix(progManager.ssao_blur);
+			ambientOcclusionBlur.bindColorTexture(0, 0);
+			linearDepthBuffer.bindColorTexture(0, 1);
+			//gBuffer.bindDepthTexture(1);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+		}else {
+			ambientOcclusionBuffer.setSize(w / 2, h / 2);
+			ambientOcclusionBuffer.bindFramebuffer();
+			glViewport(0, 0, w / 2, h / 2);
+			glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+		}
 		
 		// ================================================= RENDER LIGHT SOURCE DIFFUSE AND SPECULAR =======================================================
 		
@@ -827,24 +835,131 @@ public class GlobalRenderer {
 		updateMatrix(progManager.sky);
 
 		kelvin = scene.skyKelvin;
-		progManager.sky_skyColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.skyBrightness, colorTemperatures.getLinearG(kelvin) * scene.skyBrightness, colorTemperatures.getLinearB(kelvin) * scene.skyBrightness);
+		float skyR = colorTemperatures.getLinearR(kelvin);
+		float skyG = colorTemperatures.getLinearG(kelvin);
+		float skyB = colorTemperatures.getLinearB(kelvin);
+		progManager.sky_skyColor.set3f(skyR * scene.skyBrightness, skyG * scene.skyBrightness, skyB * scene.skyBrightness);
 		
 		kelvin = scene.sunKelvin;
-		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness);
+		float scale = 10.0f;
+		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 		
 		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 		progManager.sky_sunSize.set1f(scene.sunSize);
 		
 		skyDome.drawAll(GL_TRIANGLES);
+
+		glDisable(GL_STENCIL_TEST);
+		if(GameConfiguration.enableVolumetricLighting && scene.lightShafts) {
+			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
+			
+			postBufferA.setSize(w, h);
+			postBufferA.bindFramebuffer();
+			
+			glViewport(0, 0, w, h);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			
+			progManager.add_positions.use();
+			modelMatrix.pushMatrix();
+			modelMatrix.scale(1000.0f);
+			updateMatrix(progManager.add_positions);
+			skyDome.drawAll(GL_TRIANGLES);
+			modelMatrix.popMatrix();
+			
+			progManager.position_to_view.use();
+			updateMatrix(progManager.position_to_view);
+			gBuffer.bindColorTexture(3, 0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			// ================================================= RENDER LIGHT SHAFT MAP =======================================================
+			ambientOcclusionBuffer.setSize(w / 2, h / 2);
+			ambientOcclusionBuffer.bindFramebuffer();
+	
+			glViewport(0, 0, w / 2, h / 2);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_CULL_FACE);
+			glDepthMask(false);
+			
+			progManager.light_shaft_generate.use();
+			progManager.light_shaft_generate_shadowMatrixA.setMatrix4f(sunShadowProjViewA);
+			progManager.light_shaft_generate_shadowMatrixB.setMatrix4f(sunShadowProjViewB);
+			progManager.light_shaft_generate_matrix_v_inv.setMatrix4f(cameraMatrix.invert(multipliedMatrix));
+			updateMatrix(progManager.light_shaft_generate);
+			postBufferA.bindColorTexture(0, 0);
+			sunShadowMap.bindDepthTexture(1);
+			gBuffer.bindColorTexture(3, 2);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+		}
+/*
+		// ================================================= BLUR HORIZONTAL LIGHT SHAFT =======================================================
+		
+		ambientOcclusionBlur.setSize(w / 2, h / 2);
+		ambientOcclusionBlur.bindFramebuffer();
+		
+		progManager.ssao_blur.use();
+		progManager.ssao_blur_blurDirection.set2f(4.0f / w, 0.0f);
+		updateMatrix(progManager.ssao_blur);
+		//linearDepthBuffer.bindColorTexture(0, 1);
+		gBuffer.bindDepthTexture(1);
+		ambientOcclusionBuffer.bindColorTexture(0, 0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+
+		// ================================================= BLUR VERTICAL LIGHT SHAFT =======================================================
+		
+		ambientOcclusionBuffer.setSize(w / 2, h / 2);
+		ambientOcclusionBuffer.bindFramebuffer();
+		
+		progManager.ssao_blur.use();
+		progManager.ssao_blur_blurDirection.set2f(0.0f, 4.0f / h);
+		updateMatrix(progManager.ssao_blur);
+		ambientOcclusionBlur.bindColorTexture(0, 0);
+		//linearDepthBuffer.bindColorTexture(0, 1);
+		gBuffer.bindDepthTexture(1);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+*/
+		// ================================================= RENDER FOG OVERLAY =======================================================
+		
+		combinedBuffer.bindFramebuffer();
+		
+		glViewport(0, 0, w, h);
+		
+		//glEnable(GL_STENCIL_TEST);
+		//glStencilMask(0x0);
+		//glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+		//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+		glDisable(GL_STENCIL_TEST);
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		progManager.blend_atmosphere.use();
+		progManager.blend_atmosphere_invTextureSize.set2f(2.0f / ((w / 2) * 2), 2.0f / ((h / 2) * 2));
+		
+		kelvin = scene.fogKelvin;
+		float fogR = colorTemperatures.getLinearR(kelvin);
+		float fogG = colorTemperatures.getLinearG(kelvin);
+		float fogB = colorTemperatures.getLinearB(kelvin);
+		progManager.blend_atmosphere_fogColor.set3f(fogR * scene.skyBrightness, fogG * scene.skyBrightness, fogB * scene.skyBrightness);
+		
+		progManager.blend_atmosphere_enableLightShafts.set1i((GameConfiguration.enableVolumetricLighting && scene.lightShafts) ? 1 : 0);
+		progManager.blend_atmosphere_fogDensity.set1f(scene.fogDensity);
+		gBuffer.bindColorTexture(3, 0);
+		ambientOcclusionBuffer.bindColorTexture(0, 1);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		glDisable(GL_BLEND);
+		
+		// ================================================= DOWNSCALE =======================================================
 		
 		projMatrix.identity();
 		cameraMatrix.identity();
 		viewProjMatrix.identity();
 		modelMatrix.clear();
-		
-		// ================================================= DOWNSCALE =======================================================
-		
-		glDisable(GL_STENCIL_TEST);
 		
 		postBufferA.setSize(w, h);
 		postBufferA.bindFramebuffer();
@@ -854,7 +969,9 @@ public class GlobalRenderer {
 		progManager.p3f2f_texture.use();
 		updateMatrix(progManager.p3f2f_texture);
 		combinedBuffer.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// ================================================= DOWNSCALE =======================================================
 		
@@ -907,34 +1024,40 @@ public class GlobalRenderer {
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			nextTick = false;
 		}
-
-		// ========================================= HORIZONTAL BLOOM ==============================================
 		
-		postBufferA.setSize(w, h);
-		postBufferA.bindFramebuffer();
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glViewport(0, 0, w / 4, h / 4);
-		
-		progManager.post_bloom_h.use();
-		progManager.post_bloom_h_screenSizeInv.set2f(1.0f / w, 1.0f / h);
-		postBufferB.bindColorTexture(0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-		
-		// ========================================= VERTICAL BLOOM ==============================================
-		
-		postBufferC.setSize(w, h);
-		postBufferC.bindFramebuffer();
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		glViewport(0, 0, w / 4, h / 4);
-		
-		progManager.post_bloom_v.use();
-		progManager.post_bloom_v_screenSizeInv.set2f(1.0f / w, 1.0f / h);
-		postBufferA.bindColorTexture(0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
+		if(GameConfiguration.enableBloom) {
+			// ========================================= HORIZONTAL BLOOM ==============================================
+			
+			postBufferA.setSize(w, h);
+			postBufferA.bindFramebuffer();
+			glViewport(0, 0, w / 4, h / 4);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+	
+			progManager.post_bloom_h.use();
+			progManager.post_bloom_h_screenSizeInv.set2f(0.5f / w, 0.5f / h);
+			postBufferB.bindColorTexture(0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			// ========================================= VERTICAL BLOOM ==============================================
+			
+			postBufferC.setSize(w, h);
+			postBufferC.bindFramebuffer();
+			glViewport(0, 0, w / 4, h / 4);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			
+			progManager.post_bloom_v.use();
+			progManager.post_bloom_v_screenSizeInv.set2f(0.5f / w, 0.5f / h);
+			postBufferA.bindColorTexture(0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+		}else {
+			postBufferC.setSize(w, h);
+			postBufferC.bindFramebuffer();
+			glViewport(0, 0, w / 4, h / 4);
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+		}
 		
 		// ================================================= BLOOM COMBINE LENS =======================================================
 
@@ -989,6 +1112,7 @@ public class GlobalRenderer {
 		progManager.post_fxaa_screenSize.set2f(w, h);
 		
 		toneMapped.bindColorTexture(0, 0);
+		//ambientOcclusionBuffer.bindColorTexture(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		++framesPassed;
@@ -1021,6 +1145,12 @@ public class GlobalRenderer {
 		}
 		if(prog.matrix_m_invtrans != null) {
 			prog.matrix_m_invtrans.setMatrix4f(modelMatrix.invert(multipliedMatrix).transpose());
+		}
+		if(prog.matrix_vp_inv != null) {
+			prog.matrix_vp_inv.setMatrix4f(viewProjMatrix.invert(multipliedMatrix));
+		}
+		if(prog.matrix_p_inv != null) {
+			prog.matrix_p_inv.setMatrix4f(projMatrix.invert(multipliedMatrix));
 		}
 	}
 	
@@ -1171,6 +1301,7 @@ public class GlobalRenderer {
 		this.lightShadowMap.destroy();
 		this.ambientOcclusionBuffer.destroy();
 		this.ambientOcclusionBlur.destroy();
+		this.linearDepthBuffer.destroy();
 		this.postBufferA.destroy();
 		this.postBufferB.destroy();
 		this.postBufferC.destroy();

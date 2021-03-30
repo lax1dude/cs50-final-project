@@ -59,6 +59,7 @@ public class ProgramManager {
 	public EaglUniform sunshadow_generate_matrixC;
 	public EaglUniform sunshadow_generate_matrixD;
 	public EaglUniform sunshadow_generate_randTimer;
+	public EaglUniform sunshadow_generate_softShadow;
 	
 	public EaglProgram light_point_shadowmap;
 	public EaglUniform light_point_shadowmap_lightPosition;
@@ -114,6 +115,20 @@ public class ProgramManager {
 	public EaglUniform sky_sunColor;
 	public EaglUniform sky_sunDirection;
 	public EaglUniform sky_sunSize;
+	
+	public EaglProgram light_shaft_generate;
+	public EaglUniform light_shaft_generate_shadowMatrixA;
+	public EaglUniform light_shaft_generate_shadowMatrixB;
+	public EaglUniform light_shaft_generate_matrix_v_inv;
+	
+	public EaglProgram blend_atmosphere;
+	public EaglUniform blend_atmosphere_invTextureSize;
+	public EaglUniform blend_atmosphere_fogColor;
+	public EaglUniform blend_atmosphere_enableLightShafts;
+	public EaglUniform blend_atmosphere_fogDensity;
+	
+	public EaglProgram position_to_view;
+	public EaglProgram add_positions;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -233,6 +248,7 @@ public class ProgramManager {
 		sunshadow_generate_matrixC = sunshadow_generate.getUniform("shadowMatrixC");
 		sunshadow_generate_matrixD = sunshadow_generate.getUniform("shadowMatrixD");
 		sunshadow_generate_randTimer = sunshadow_generate.getUniform("randTimer");
+		sunshadow_generate_softShadow = sunshadow_generate.getUniform("softShadow");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_point_shadowmap.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_point_shadowmap.vsh");
@@ -368,6 +384,42 @@ public class ProgramManager {
 		sky_sunColor = sky.getUniform("sunColor");
 		sky_sunDirection = sky.getUniform("sunDirection");
 		sky_sunSize = sky.getUniform("sunSize");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_shaft_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_shaft_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_shaft_generate.fsh");
+		this.light_shaft_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		light_shaft_generate.getUniform("positionTex").set1i(0);
+		light_shaft_generate.getUniform("shadowMap").set1i(1);
+		light_shaft_generate.getUniform("positionTex2").set1i(2);
+		
+		light_shaft_generate_matrix_v_inv = light_shaft_generate.getUniform("matrix_v_inv");
+		light_shaft_generate_shadowMatrixA = light_shaft_generate.getUniform("shadowMatrixA");
+		light_shaft_generate_shadowMatrixB = light_shaft_generate.getUniform("shadowMatrixB");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/blend_atmosphere.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "blend_atmosphere.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "blend_atmosphere.fsh");
+		this.blend_atmosphere = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		blend_atmosphere.getUniform("positionTex").set1i(0);
+		blend_atmosphere.getUniform("lightShaftTex").set1i(1);
+
+		blend_atmosphere_invTextureSize = blend_atmosphere.getUniform("invTextureSize");
+		blend_atmosphere_fogColor = blend_atmosphere.getUniform("fogColor");
+		blend_atmosphere_enableLightShafts = blend_atmosphere.getUniform("enableLightShafts");
+		blend_atmosphere_fogDensity = blend_atmosphere.getUniform("fogDensity");
+
+		source = ResourceLoader.loadResourceString("metaballs/shaders/position_to_view.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "position_to_view.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "position_to_view.fsh");
+		this.position_to_view = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		position_to_view.getUniform("positionTex").set1i(0);
+
+		source = ResourceLoader.loadResourceString("metaballs/shaders/add_positions.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "add_positions.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "add_positions.fsh");
+		this.add_positions = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -400,6 +452,10 @@ public class ProgramManager {
 		post_bloom_v.destroy();
 		bloom_combine_lens.destroy();
 		sky.destroy();
+		light_shaft_generate.destroy();
+		blend_atmosphere.destroy();
+		position_to_view.destroy();
+		add_positions.destroy();
 	}
 
 }

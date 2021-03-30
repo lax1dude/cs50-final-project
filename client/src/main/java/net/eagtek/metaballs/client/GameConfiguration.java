@@ -23,12 +23,17 @@ public class GameConfiguration {
 	public static int sunShadowMapResolution = 2048;
 	public static int lightShadowMapResolution = 512;
 	
-	public static float sunShadowDistance = 200.0f;
+	public static float sunShadowDistance = 150.0f;
 	
 	public static float sunShadowLODADistance = 10.0f;
-	public static float sunShadowLODBDistance = 50.0f;
-	public static float sunShadowLODCDistance = 250.0f;
-	public static float sunShadowLODDDistance = 1250.0f;
+	public static float sunShadowLODBDistance = 40.0f;
+	public static float sunShadowLODCDistance = 160.0f;
+	public static float sunShadowLODDDistance = 640.0f;
+
+	public static boolean enableAmbientOcclusion = true;
+	public static boolean enableVolumetricLighting = false; //expensive
+	public static boolean enableBloom = true;
+	public static boolean enableSoftShadows = true;
 	
 	public static float farPlane = 2048.0f;
 	

@@ -2,6 +2,7 @@ package net.eagtek.metaballs.client.renderer;
 
 import static org.lwjgl.opengles.GLES30.*;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.joml.FrustumIntersection;
 
 import net.eagtek.eagl.EaglVertexArray;
@@ -14,14 +15,35 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	public final int texture2D;
 	public final int drawmode;
 	
-	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, int drawmode) {
+	public final RenderPass[] passes;
+
+	public static final RenderPass[] passes_all_opaque = new RenderPass[] {
+			RenderPass.G_BUFFER,
+			RenderPass.CUBEMAP,
+			RenderPass.LIGHT_SHADOW,
+			RenderPass.REFLECTION,
+			RenderPass.SHADOW_A,
+			RenderPass.SHADOW_B,
+			RenderPass.SHADOW_C,
+			RenderPass.SHADOW_D
+	};
+
+	public static final RenderPass[] passes_small_object_opaque = new RenderPass[] {
+			RenderPass.G_BUFFER,
+			RenderPass.LIGHT_SHADOW,
+			RenderPass.SHADOW_A,
+			RenderPass.SHADOW_B
+	};
+	
+	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, int drawmode, RenderPass[] passes) {
 		this.array = array3f4b2f;
 		this.texture2D = texture2D;
 		this.drawmode = drawmode;
+		this.passes = passes;
 	}
 	
-	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D) {
-		this(array3f4b2f, texture2D, GL_TRIANGLES);
+	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, RenderPass[] passes) {
+		this(array3f4b2f, texture2D, GL_TRIANGLES, passes);
 	}
 	
 	public float ditherBlend;
@@ -71,6 +93,34 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	}
 
 	@Override
+	public boolean shouldRenderPass(RenderPass pass) {
+		return ArrayUtils.contains(passes, pass);
+	}
+
+	@Override
+	public void renderPass(RenderPass pass, GlobalRenderer globalRenderer) {
+		switch(pass) {
+		case G_BUFFER:
+			renderGBuffer(globalRenderer);
+			break;
+		case SHADOW_A:
+		case SHADOW_B:
+		case SHADOW_C:
+		case SHADOW_D:
+		case LIGHT_SHADOW:
+			renderShadow(globalRenderer);
+			break;
+		case REFLECTION:
+			renderReflectionMap(globalRenderer);
+		case CUBEMAP:
+			renderCubeMap(globalRenderer);
+		case TRANSPARENT:
+			renderTransparent(globalRenderer);
+		default:
+			break;
+		}
+	}
+
 	public void renderGBuffer(GlobalRenderer globalRenderer) {
 		globalRenderer.modelMatrix.pushMatrix();
 		transform(globalRenderer);
@@ -90,12 +140,14 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		globalRenderer.modelMatrix.popMatrix();
 	}
 
-	@Override
 	public void renderReflectionMap(GlobalRenderer globalRenderer) {
 		
 	}
 
-	@Override
+	public void renderCubeMap(GlobalRenderer globalRenderer) {
+		
+	}
+
 	public void renderShadow(GlobalRenderer globalRenderer) {
 		globalRenderer.modelMatrix.pushMatrix();
 		transform(globalRenderer);
@@ -115,8 +167,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		if(rotationZ != 0.0f) globalRenderer.modelMatrix.rotateZ(rotationZ * MathUtil.toRadians);
 		if(scale != 1.0f) globalRenderer.modelMatrix.scale(scale);
 	}
-
-	@Override
+	
 	public void renderTransparent(GlobalRenderer globalRenderer) {
 		
 	}

@@ -5,8 +5,7 @@ import java.util.LinkedHashSet;
 import org.joml.Vector3f;
 
 public class RenderScene {
-
-	public final LinkedHashSet<TerrainRenderer> terrainRenderers = new LinkedHashSet();
+	
 	public final LinkedHashSet<ObjectRenderer> objectRenderers = new LinkedHashSet();
 	public final LinkedHashSet<LightData> lightRenderers = new LinkedHashSet();
 	public final LinkedHashSet<ShadowLightRenderer> shadowLightRenderers = new LinkedHashSet();
@@ -18,10 +17,13 @@ public class RenderScene {
 
 	public int sunKelvin = 3500;
 	public int skyKelvin = 10000;
+	public int fogKelvin = 6000;
 	
 	public float sunBrightness = 100.0f;
 	public float skyBrightness = 1.0f;
 	public float sunSize = 1.0f;
+	public float fogDensity = 0.001f;
+	public boolean lightShafts = true;
 	
 	public RenderScene() {
 		
