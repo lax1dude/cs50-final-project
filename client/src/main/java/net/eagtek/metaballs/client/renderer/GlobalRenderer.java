@@ -85,6 +85,8 @@ public class GlobalRenderer {
 	private final EaglFramebuffer ambientOcclusionBuffer;
 	private final EaglFramebuffer ambientOcclusionBlur;
 
+	private final EaglFramebuffer skyBuffer;
+	
 	private final EaglFramebuffer postBufferA;
 	private final EaglFramebuffer postBufferB;
 	private final EaglFramebuffer postBufferC;
@@ -98,6 +100,8 @@ public class GlobalRenderer {
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
 	private int prevFramesPassed = 0;
+	
+	private int frameCounterTotal = 0;
 
 	public double renderPosX;
 	public double renderPosY;
@@ -224,6 +228,8 @@ public class GlobalRenderer {
 		linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		ambientOcclusionBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
 		ambientOcclusionBlur = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
+		
+		skyBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
 
 		postBufferA = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
 		postBufferB = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
@@ -257,12 +263,11 @@ public class GlobalRenderer {
 		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
 		
 		scene.skyBrightness = timeOfDay * 2.0f;
-		scene.sunBrightness = 200.0f;
+		scene.sunBrightness = 100.0f;
 		
-		scene.sunSize = 0.15f;
+		scene.sunSize = 0.1f;
 		
 		scene.sunKelvin = (int) lerp(1000.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
-		scene.skyKelvin = 20000;
 		
 		scene.fogKelvin = 6000;
 		
@@ -825,31 +830,41 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
+		
+		if(frameCounterTotal % 9 == 0) {
+			
+			skyBuffer.setSize(w, h);
+			skyBuffer.bindFramebuffer();
+			
+			progManager.sky.use();
+			updateMatrix(progManager.sky);
+			
+			kelvin = scene.sunKelvin;
+			float scale = 10.0f;
+			progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+			
+			progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+			progManager.sky_sunSize.set1f(scene.sunSize);
+			
+			skyDome.drawAll(GL_TRIANGLES);
+			
+		}
 
+		combinedBuffer.setSize(w, h);
+		combinedBuffer.bindFramebuffer();
+		
 		glEnable(GL_STENCIL_TEST);
 		glStencilMask(0x0);
 		glStencilFunc(GL_EQUAL, 0, 0xFF);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		
-		progManager.sky.use();
-		updateMatrix(progManager.sky);
 
-		kelvin = scene.skyKelvin;
-		float skyR = colorTemperatures.getLinearR(kelvin);
-		float skyG = colorTemperatures.getLinearG(kelvin);
-		float skyB = colorTemperatures.getLinearB(kelvin);
-		progManager.sky_skyColor.set3f(skyR * scene.skyBrightness, skyG * scene.skyBrightness, skyB * scene.skyBrightness);
-		
-		kelvin = scene.sunKelvin;
-		float scale = 10.0f;
-		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
-		
-		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-		progManager.sky_sunSize.set1f(scene.sunSize);
-		
-		skyDome.drawAll(GL_TRIANGLES);
+		progManager.p3f2f_texture.use();
+		progManager.p3f2f_texture.matrix_mvp.setMatrix4f(multipliedMatrix.identity());
+		skyBuffer.bindColorTexture(0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
 
 		glDisable(GL_STENCIL_TEST);
+		
 		if(GameConfiguration.enableVolumetricLighting && scene.lightShafts) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
@@ -866,12 +881,12 @@ public class GlobalRenderer {
 			updateMatrix(progManager.add_positions);
 			skyDome.drawAll(GL_TRIANGLES);
 			modelMatrix.popMatrix();
-			
+			/*
 			progManager.position_to_view.use();
 			updateMatrix(progManager.position_to_view);
 			gBuffer.bindColorTexture(3, 0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
-			
+			*/
 			// ================================================= RENDER LIGHT SHAFT MAP =======================================================
 			ambientOcclusionBuffer.setSize(w / 2, h / 2);
 			ambientOcclusionBuffer.bindFramebuffer();
@@ -1115,6 +1130,7 @@ public class GlobalRenderer {
 		//ambientOcclusionBuffer.bindColorTexture(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
+		++frameCounterTotal;
 		++framesPassed;
 		if(System.currentTimeMillis() - secondTimer >= 1000l) {
 			secondTimer = System.currentTimeMillis();
@@ -1308,6 +1324,7 @@ public class GlobalRenderer {
 		this.toneMapped.destroy();
 		this.exposureCalcTexture.destroy();
 		this.skyDome.destroy();
+		this.skyBuffer.destroy();
 	}
 
 }

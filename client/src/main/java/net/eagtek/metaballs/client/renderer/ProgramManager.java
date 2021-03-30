@@ -111,7 +111,6 @@ public class ProgramManager {
 	public EaglUniform bloom_combine_lens_randomTransition;
 	
 	public EaglProgram sky;
-	public EaglUniform sky_skyColor;
 	public EaglUniform sky_sunColor;
 	public EaglUniform sky_sunDirection;
 	public EaglUniform sky_sunSize;
@@ -379,8 +378,7 @@ public class ProgramManager {
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "sky.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "sky.fsh");
 		this.sky = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
-
-		sky_skyColor = sky.getUniform("skyColor");
+		
 		sky_sunColor = sky.getUniform("sunColor");
 		sky_sunDirection = sky.getUniform("sunDirection");
 		sky_sunSize = sky.getUniform("sunSize");

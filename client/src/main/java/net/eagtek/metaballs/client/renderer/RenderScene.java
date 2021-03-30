@@ -16,13 +16,12 @@ public class RenderScene {
 	public Vector3f sunDirection = new Vector3f();
 
 	public int sunKelvin = 3500;
-	public int skyKelvin = 10000;
 	public int fogKelvin = 6000;
 	
 	public float sunBrightness = 100.0f;
 	public float skyBrightness = 1.0f;
-	public float sunSize = 1.0f;
-	public float fogDensity = 0.001f;
+	public float sunSize = 0.1f;
+	public float fogDensity = 0.005f;
 	public boolean lightShafts = true;
 	
 	public RenderScene() {

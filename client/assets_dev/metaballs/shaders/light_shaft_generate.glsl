@@ -42,6 +42,11 @@ void main() {
 	float step = 0.6;
 	vec3 fragPos = (matrix_v_inv * vec4(texture(positionTex, texCoord).rgb, 1.0)).xyz;
 	
+	if(fragPos.x == 0.0 && fragPos.y == 0.0 && fragPos.z == 0.0) {
+		fragOut = 1.0;
+		return;
+	}
+	
 	vec3 direction = normalize(fragPos);
 	
 	vec4 pos = vec4(direction * (fract(sin(dot(texCoord.xy ,vec2(12.9898,78.233))) * 42485.42524) + 1.0) * 1.0, 1.0);
