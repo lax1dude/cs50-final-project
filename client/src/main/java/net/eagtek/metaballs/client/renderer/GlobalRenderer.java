@@ -14,7 +14,6 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import org.lwjgl.opengles.EXTTextureFilterAnisotropic;
 import org.lwjgl.system.MemoryStack;
 
 import net.eagtek.eagl.EaglFramebuffer;
@@ -52,11 +51,11 @@ public class GlobalRenderer {
 	
 	public final ProgramManager progManager;
 	
-	private final EaglVertexArray quadArray;
+	public final EaglVertexArray quadArray;
 	
 	private final EaglImage2D testGraphic;
 	private final EaglImage2D bananaTexture;
-	private final EaglImage2D dirtTexture;
+	//private final EaglImage2D dirtTexture;
 	private final EaglImage2D testModelTexture;
 	
 	private ModelObjectRenderer testModelRenderer = null;
@@ -85,14 +84,14 @@ public class GlobalRenderer {
 	private final EaglFramebuffer ambientOcclusionBuffer;
 	private final EaglFramebuffer ambientOcclusionBlur;
 
-	private final EaglFramebuffer skyBuffer;
-	
 	private final EaglFramebuffer postBufferA;
 	private final EaglFramebuffer postBufferB;
 	private final EaglFramebuffer postBufferC;
 	private final EaglFramebuffer exposureCalcTexture;
-	
+
 	private final EaglFramebuffer toneMapped;
+	
+	public final CloudMapGenerator cloudMapGenerator;
 
 	private float exposure = 2.0f;
 	private float targetExposure = 2.0f;
@@ -100,8 +99,8 @@ public class GlobalRenderer {
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
 	private int prevFramesPassed = 0;
-	
-	private int frameCounterTotal = 0;
+	public int totalFrames = 0;
+	public int totalTicks = 0;
 
 	public double renderPosX;
 	public double renderPosY;
@@ -150,9 +149,9 @@ public class GlobalRenderer {
 		testGraphic = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/icon64.png"));
 		testModelTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/longarms_texture.png"));
 		bananaTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/banana_texture.png"));
-		dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
+		//dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
 		
-		dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
 		//load test model =====================================================
 		
@@ -228,8 +227,6 @@ public class GlobalRenderer {
 		linearDepthBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		ambientOcclusionBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
 		ambientOcclusionBlur = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
-		
-		skyBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
 
 		postBufferA = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
 		postBufferB = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
@@ -237,6 +234,8 @@ public class GlobalRenderer {
 
 		toneMapped = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB);
 		exposureCalcTexture = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
+		
+		cloudMapGenerator = new CloudMapGenerator(this);
 		
 	}
 
@@ -257,21 +256,21 @@ public class GlobalRenderer {
 		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f).normalize();
 		//sd.rotateZ(120.0f * MathUtil.toRadians);
-		sd.rotateZ((100.0f - ((client.totalTicksF * 0.025f) % 180.0f)) * MathUtil.toRadians);
+		sd.rotateZ((100.0f - ((client.totalTicksF * 0.02f) % 180.0f)) * MathUtil.toRadians);
 		sd.rotateY(20.0f * MathUtil.toRadians);
 		
 		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
 		
 		scene.skyBrightness = timeOfDay * 2.0f;
-		scene.sunBrightness = 100.0f;
+		scene.sunBrightness = 200.0f;
 		
-		scene.sunSize = 0.1f;
+		scene.sunSize = 0.15f;
 		
-		scene.sunKelvin = (int) lerp(1000.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
+		scene.sunKelvin = (int) lerp(1500.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
 		
 		scene.fogKelvin = 6000;
 		
-		scene.fogDensity = 0.01f;
+		scene.fogDensity = 0.005f;
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
@@ -543,13 +542,14 @@ public class GlobalRenderer {
 		progManager.sunshadow_generate_matrixD.setMatrix4f(sunShadowProjViewD);
 		progManager.sunshadow_generate_randTimer.set1f(client.totalTicksF % 100.0f);
 		progManager.sunshadow_generate_softShadow.set1i(GameConfiguration.enableSoftShadows ? 1 : 0);
-
+		updateMatrix(progManager.sunshadow_generate);
+		
 		gBuffer.bindColorTexture(2, 0);
 		gBuffer.bindColorTexture(3, 1);
 		sunShadowMap.bindDepthTexture(2);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
-		glDisable(GL_STENCIL_TEST);
+		//glDisable(GL_STENCIL_TEST);
 		
 		// ================================================= RENDER LINEAR DEPTH BUFFER =======================================================
 
@@ -830,41 +830,35 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
-		
-		if(frameCounterTotal % 9 == 0) {
-			
-			skyBuffer.setSize(w, h);
-			skyBuffer.bindFramebuffer();
-			
-			progManager.sky.use();
-			updateMatrix(progManager.sky);
-			
-			kelvin = scene.sunKelvin;
-			float scale = 10.0f;
-			progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
-			
-			progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-			progManager.sky_sunSize.set1f(scene.sunSize);
-			
-			skyDome.drawAll(GL_TRIANGLES);
-			
-		}
 
-		combinedBuffer.setSize(w, h);
-		combinedBuffer.bindFramebuffer();
-		
 		glEnable(GL_STENCIL_TEST);
 		glStencilMask(0x0);
 		glStencilFunc(GL_EQUAL, 0, 0xFF);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-
-		progManager.p3f2f_texture.use();
-		progManager.p3f2f_texture.matrix_mvp.setMatrix4f(multipliedMatrix.identity());
-		skyBuffer.bindColorTexture(0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-
-		glDisable(GL_STENCIL_TEST);
 		
+		progManager.sky.use();
+		updateMatrix(progManager.sky);
+		
+		kelvin = scene.sunKelvin;
+		float scale = 10.0f;
+		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+		
+		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+		progManager.sky_sunSize.set1f(scene.sunSize);
+		
+		float altitude = (float) renderPosY;
+		if(altitude > 100000.0f) altitude = 100000.0f;
+		if(altitude < -1000.0f) altitude = -1000.0f;
+		progManager.sky_altitude.set1f(altitude);
+
+		this.cloudMapGenerator.bindTextureA(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		this.cloudMapGenerator.bindTextureB(1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
+		skyDome.drawAll(GL_TRIANGLES);
+		
+		glDisable(GL_STENCIL_TEST);
 		if(GameConfiguration.enableVolumetricLighting && scene.lightShafts) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
@@ -874,19 +868,19 @@ public class GlobalRenderer {
 			glViewport(0, 0, w, h);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
-			
+			/*
 			progManager.add_positions.use();
 			modelMatrix.pushMatrix();
 			modelMatrix.scale(1000.0f);
 			updateMatrix(progManager.add_positions);
 			skyDome.drawAll(GL_TRIANGLES);
 			modelMatrix.popMatrix();
-			/*
+			*/
 			progManager.position_to_view.use();
 			updateMatrix(progManager.position_to_view);
 			gBuffer.bindColorTexture(3, 0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
-			*/
+			
 			// ================================================= RENDER LIGHT SHAFT MAP =======================================================
 			ambientOcclusionBuffer.setSize(w / 2, h / 2);
 			ambientOcclusionBuffer.bindFramebuffer();
@@ -941,33 +935,39 @@ public class GlobalRenderer {
 		
 		glViewport(0, 0, w, h);
 		
-		//glEnable(GL_STENCIL_TEST);
-		//glStencilMask(0x0);
-		//glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
-		//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		glDisable(GL_STENCIL_TEST);
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0x0);
+		glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		progManager.blend_atmosphere.use();
 		progManager.blend_atmosphere_invTextureSize.set2f(2.0f / ((w / 2) * 2), 2.0f / ((h / 2) * 2));
-		
+
 		kelvin = scene.fogKelvin;
 		float fogR = colorTemperatures.getLinearR(kelvin);
 		float fogG = colorTemperatures.getLinearG(kelvin);
 		float fogB = colorTemperatures.getLinearB(kelvin);
 		progManager.blend_atmosphere_fogColor.set3f(fogR * scene.skyBrightness, fogG * scene.skyBrightness, fogB * scene.skyBrightness);
 		
+		kelvin = scene.sunKelvin;
+		fogR = colorTemperatures.getLinearR(kelvin);
+		fogG = colorTemperatures.getLinearG(kelvin);
+		fogB = colorTemperatures.getLinearB(kelvin);
+		progManager.blend_atmosphere_shaftColor.set3f(fogR * scene.skyBrightness, fogG * scene.skyBrightness, fogB * scene.skyBrightness);
+		
 		progManager.blend_atmosphere_enableLightShafts.set1i((GameConfiguration.enableVolumetricLighting && scene.lightShafts) ? 1 : 0);
 		progManager.blend_atmosphere_fogDensity.set1f(scene.fogDensity);
 		gBuffer.bindColorTexture(3, 0);
 		ambientOcclusionBuffer.bindColorTexture(0, 1);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		glDisable(GL_BLEND);
+		glDisable(GL_STENCIL_TEST);
 		
 		// ================================================= DOWNSCALE =======================================================
 		
@@ -1126,12 +1126,12 @@ public class GlobalRenderer {
 		progManager.post_fxaa_edgeThresholdMin.set1f(0.04f);
 		progManager.post_fxaa_screenSize.set2f(w, h);
 		
-		toneMapped.bindColorTexture(0, 0);
-		//ambientOcclusionBuffer.bindColorTexture(0);
+		toneMapped.bindColorTexture(0, 0);//TODO
+		//this.cloudMapGenerator.buffer.bindColorTexture(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
-		++frameCounterTotal;
 		++framesPassed;
+		++totalFrames;
 		if(System.currentTimeMillis() - secondTimer >= 1000l) {
 			secondTimer = System.currentTimeMillis();
 			prevFramesPassed = framesPassed;
@@ -1167,6 +1167,9 @@ public class GlobalRenderer {
 		}
 		if(prog.matrix_p_inv != null) {
 			prog.matrix_p_inv.setMatrix4f(projMatrix.invert(multipliedMatrix));
+		}
+		if(prog.matrix_v_inv != null) {
+			prog.matrix_v_inv.setMatrix4f(cameraMatrix.invert(multipliedMatrix));
 		}
 	}
 	
@@ -1209,6 +1212,10 @@ public class GlobalRenderer {
 			
 			exposure += (targetExposure - exposure) * 0.03f;
 		}
+		
+		cloudMapGenerator.renderCloudMap(GameClient.instance.getScene());
+		
+		++totalTicks;
 	}
 	
 	private final Vector4f[] bbVertexes = new Vector4f[8];
@@ -1324,7 +1331,7 @@ public class GlobalRenderer {
 		this.toneMapped.destroy();
 		this.exposureCalcTexture.destroy();
 		this.skyDome.destroy();
-		this.skyBuffer.destroy();
+		this.cloudMapGenerator.destroy();
 	}
 
 }

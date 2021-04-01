@@ -1,6 +1,7 @@
 package net.eagtek.metaballs;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
 
 public class MathUtil {
 
@@ -12,6 +13,7 @@ public class MathUtil {
 	public static final float[] ASIN_TABLE = new float[32768];
 	public static final float[] ATAN_TABLE = new float[32768];
 	public static final float PI_FLOAT = 3.141592654f;
+	public static final Random random = new Random();
 	
 	static {
 		float f = (float) ((2*PI_FLOAT) / 65536) ;

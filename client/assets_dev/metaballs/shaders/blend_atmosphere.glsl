@@ -24,31 +24,18 @@ uniform sampler2D lightShaftTex;
 
 uniform vec2 invTextureSize;
 uniform vec3 fogColor;
+uniform vec3 shaftColor;
 uniform float fogDensity;
 
 uniform int enableLightShafts;
 
 void main() {
-	if(enableLightShafts == 1) {
-		float b = 0.0;
-		for(float i = -1.0; i <= 1.0; ++i) {
-			for(float j = -1.0; j <= 1.0; ++j) {
-				b += texture(lightShaftTex, texCoord + (vec2(j, i) * invTextureSize)).r;
-			}
-		}
-		b = b / 9.0;
-		
-		float dist = max(length(texture(positionTex, texCoord).xyz), 0.0);
-		float shaft = b;//texture(lightShaftTex, texCoord).r;
-		
-		float fog = (1.0 - clamp(exp(-fogDensity * dist), 0.5, 1.0));
-		
-		fragOut = vec4(fogColor * vec3(pow(shaft, 2.0)), fog * pow(shaft, 3.0));
-	}else {
-		float dist = max(length(texture(positionTex, texCoord).xyz) - 30.0, 0.0);
-		float fog = (1.0 - clamp(exp(-fogDensity * dist), 0.5, 1.0));
-		fragOut = vec4(fogColor, fog);
-	}
+	float dist0 = length(texture(positionTex, texCoord).xyz);
+	float dist = max(dist0 - 30.0, 0.0);
+	float shaft = 0.0;
+	if(enableLightShafts == 1) shaft = pow(max(30.0 - dist0, 0.0) / 10.0, 2.0) * texture(lightShaftTex, texCoord).r;
+	float fog = (1.0 - clamp(exp(-fogDensity * dist), 0.0, 1.0));
+	fragOut = vec4(mix(fogColor, shaftColor, shaft), max(fog, shaft) * clamp(dist0 * 0.05, 0.0, 1.0));
 }
 
 #endif

@@ -114,6 +114,8 @@ public class ProgramManager {
 	public EaglUniform sky_sunColor;
 	public EaglUniform sky_sunDirection;
 	public EaglUniform sky_sunSize;
+	public EaglUniform sky_altitude;
+	public EaglUniform sky_cloudTextureBlend;
 	
 	public EaglProgram light_shaft_generate;
 	public EaglUniform light_shaft_generate_shadowMatrixA;
@@ -125,9 +127,16 @@ public class ProgramManager {
 	public EaglUniform blend_atmosphere_fogColor;
 	public EaglUniform blend_atmosphere_enableLightShafts;
 	public EaglUniform blend_atmosphere_fogDensity;
+	public EaglUniform blend_atmosphere_shaftColor;
 	
 	public EaglProgram position_to_view;
 	public EaglProgram add_positions;
+	
+	public EaglProgram clouds_generate;
+	public EaglUniform clouds_generate_cloudDensity;
+	public EaglUniform clouds_generate_cloudOffset;
+	public EaglUniform clouds_generate_cloudMorph;
+	public EaglUniform clouds_generate_sunPosition;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -378,10 +387,14 @@ public class ProgramManager {
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "sky.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "sky.fsh");
 		this.sky = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		sky.getUniform("cloudTextureA").set1i(0);
+		sky.getUniform("cloudTextureB").set1i(1);
 		
 		sky_sunColor = sky.getUniform("sunColor");
 		sky_sunDirection = sky.getUniform("sunDirection");
 		sky_sunSize = sky.getUniform("sunSize");
+		sky_altitude = sky.getUniform("altitude");
+		sky_cloudTextureBlend = sky.getUniform("cloudTextureBlend");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_shaft_generate.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_shaft_generate.vsh");
@@ -406,6 +419,7 @@ public class ProgramManager {
 		blend_atmosphere_fogColor = blend_atmosphere.getUniform("fogColor");
 		blend_atmosphere_enableLightShafts = blend_atmosphere.getUniform("enableLightShafts");
 		blend_atmosphere_fogDensity = blend_atmosphere.getUniform("fogDensity");
+		blend_atmosphere_shaftColor = blend_atmosphere.getUniform("shaftColor");
 
 		source = ResourceLoader.loadResourceString("metaballs/shaders/position_to_view.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "position_to_view.vsh");
@@ -417,7 +431,16 @@ public class ProgramManager {
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "add_positions.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "add_positions.fsh");
 		this.add_positions = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		source = ResourceLoader.loadResourceString("metaballs/shaders/clouds_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "clouds_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "clouds_generate.fsh");
+		this.clouds_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		
+		clouds_generate_cloudDensity = clouds_generate.getUniform("cloudDensity");
+		clouds_generate_cloudOffset = clouds_generate.getUniform("cloudOffset");
+		clouds_generate_cloudMorph = clouds_generate.getUniform("cloudMorph");
+		clouds_generate_sunPosition = clouds_generate.getUniform("sunPosition");
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -454,6 +477,7 @@ public class ProgramManager {
 		blend_atmosphere.destroy();
 		position_to_view.destroy();
 		add_positions.destroy();
+		clouds_generate.destroy();
 	}
 
 }

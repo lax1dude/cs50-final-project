@@ -16,7 +16,7 @@ void main() {
 
 #define PI 3.14159265
 
-//include pbr_common.glsl
+//include dependencies/pbr_common.glsl
 #line 20
 
 in vec2 v_texCoord;

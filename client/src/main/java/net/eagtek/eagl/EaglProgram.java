@@ -21,6 +21,7 @@ public class EaglProgram {
 	public EaglUniform matrix_mvp_inv = null;
 	public EaglUniform matrix_vp_inv = null;
 	public EaglUniform matrix_p_inv = null;
+	public EaglUniform matrix_v_inv = null;
 
 	public EaglUniform matrix_m_invtrans = null;
 	public EaglUniform matrix_mv_invtrans = null;
@@ -65,6 +66,7 @@ public class EaglProgram {
 		this.matrix_mvp_inv = getUniformOrNull("matrix_mvp_inv");
 		this.matrix_vp_inv = getUniformOrNull("matrix_mvp_inv");
 		this.matrix_p_inv = getUniformOrNull("matrix_p_inv");
+		this.matrix_v_inv = getUniformOrNull("matrix_v_inv");
 
 		this.matrix_m_invtrans = getUniformOrNull("matrix_m_invtrans");
 		this.matrix_mv_invtrans = getUniformOrNull("matrix_mv_invtrans");

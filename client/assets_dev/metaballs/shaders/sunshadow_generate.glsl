@@ -28,6 +28,9 @@ uniform mat4 shadowMatrixB;
 uniform mat4 shadowMatrixC;
 uniform mat4 shadowMatrixD;
 
+uniform mat4 matrix_v_inv;
+uniform mat4 matrix_p_inv;
+
 uniform float randTimer;
 
 uniform int softShadow;
@@ -52,10 +55,27 @@ mat4 rotationMatrix(vec3 axis, float angle) {
                 0.0,                                0.0,                                0.0,                                1.0);
 }
 
+float calcSmoothShadow(mat4 pmatrix, float pmap, vec3 pnormal, vec3 ppos, float amount) {
+	float sampleWeight = 1.0 / 16.0;
+	float accum = sampleWeight;
+	
+	vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(pnormal, 1.0);
+	
+	for(float i = 0.0; i < 15.0; ++i) {
+		vec4 rot = rotationMatrix(pnormal, i * (360.0 / 7.0) * 0.017453293) * rotate90;
+		vec4 sampleLoc = pmatrix * vec4(ppos + rot.xyz * (i < 7.0 ? 0.07 : 0.14) * amount, 1.0);
+		
+		sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
+		if(isInTexture(sampleLoc.xyz)) accum += (texture(shadowMap, sampleLoc.xy * vec2(0.25, 1.0) + vec2(0.25 * pmap, 1.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
+		else accum += sampleWeight;
+	}
+	
+	return max(accum * 2.0 - 1.0, 0.0);
+}
+
 void main() {
 	vec4 pos = vec4(texture(position, v_texCoord).rgb, 1.0);
 	vec3 normalC = normalize(texture(normal, v_texCoord).xyz * 2.0 - 1.0);
-	float blurSize = 1.0;
 	
 	vec4 shadowPos = shadowMatrixA * pos;
 	shadowPos.xyz *= 0.5; shadowPos.xyz += 0.5;
@@ -71,47 +91,29 @@ void main() {
 				if(!isInTexture(shadowPos.xyz)) {
 					fragOut = 1.0;
 				}else {
-					fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.75, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
+					if(softShadow == 1) {
+						fragOut = calcSmoothShadow(shadowMatrixD, 3.0, normalC, pos.xyz, 15.0);
+					}else {
+						fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.75, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
+					}
 				}	
 			}else {
-				fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.50, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
+				if(softShadow == 1) {
+					fragOut = calcSmoothShadow(shadowMatrixC, 2.0, normalC, pos.xyz, 5.0);
+				}else {
+					fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.50, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
+				}
 			}
 		}else {
 			if(softShadow == 1) {
-				float accum = 0.0;
-				float sampleWeight = 1.0 / 6.0;
-				
-				vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
-				
-				for(float i = 0.0; i < 6.0; ++i) {
-					vec4 rot = rotationMatrix(normalC, i * (360.0 / 3.0) * 0.017453293) * rotate90;
-					vec4 sampleLoc = shadowMatrixB * vec4(pos.xyz + rot.xyz * (i < 3.0 ? 0.035 : 0.07) * blurSize, 1.0);
-					
-					sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-					accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
-				}
-				
-				fragOut = max(accum * 2.0 - 1.0, 0.0);
+				fragOut = calcSmoothShadow(shadowMatrixB, 1.0, normalC, pos.xyz, 1.0);
 			}else {
 				fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.25, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 			}
 		}
 	} else {
 		if(softShadow == 1) {
-			float accum = 0.0;
-			float sampleWeight = 1.0 / 15.0;
-			
-			vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
-			
-			for(float i = 0.0; i < 15.0; ++i) {
-				vec4 rot = rotationMatrix(normalC, i * (360.0 / 7.0) * 0.017453293) * rotate90;
-				vec4 sampleLoc = shadowMatrixA * vec4(pos.xyz + rot.xyz * (i < 7.0 ? 0.07 : 0.14) * blurSize, 1.0);
-				
-				sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
-				accum += (texture(shadowMap, clamp(sampleLoc.xy, vec2(0.000001), vec2(0.999999)) * vec2(0.25, 1.0)).r <= sampleLoc.z) ? sampleWeight : 0.0;
-			}
-			
-			fragOut = max(accum * 2.0 - 1.0, 0.0);
+			fragOut = calcSmoothShadow(shadowMatrixA, 0.0, normalC, pos.xyz, 1.0);
 		}else {
 			fragOut = (texture(shadowMap, shadowPos.xy * vec2(0.25, 1.0) + vec2(0.0, 0.0)).r <= shadowPos.z) ? 1.0 : 0.0;
 		}

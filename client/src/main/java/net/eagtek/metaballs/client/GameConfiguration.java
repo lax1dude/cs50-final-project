@@ -22,6 +22,7 @@ public class GameConfiguration {
 
 	public static int sunShadowMapResolution = 2048;
 	public static int lightShadowMapResolution = 512;
+	public static int cloudMapResolution = 512;
 	
 	public static float sunShadowDistance = 150.0f;
 	
@@ -31,7 +32,7 @@ public class GameConfiguration {
 	public static float sunShadowLODDDistance = 640.0f;
 
 	public static boolean enableAmbientOcclusion = true;
-	public static boolean enableVolumetricLighting = false; //expensive
+	public static boolean enableVolumetricLighting = true; //expensive
 	public static boolean enableBloom = true;
 	public static boolean enableSoftShadows = true;
 	

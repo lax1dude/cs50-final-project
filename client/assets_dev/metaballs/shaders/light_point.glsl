@@ -14,7 +14,7 @@ void main() {
 
 #define PI 3.14159265
 
-//include pbr_common.glsl
+//include dependencies/pbr_common.glsl
 #line 19
 
 layout(location = 0) out vec3 diffuseOut;
