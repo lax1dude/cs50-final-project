@@ -1,6 +1,6 @@
 package net.eagtek.metaballs.client.renderer;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.joml.FrustumIntersection;
@@ -35,15 +35,16 @@ public class ModelObjectRenderer extends ObjectRenderer {
 			RenderPass.SHADOW_B
 	};
 	
-	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, int drawmode, RenderPass[] passes) {
+	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, int drawmode, RenderPass[] passes, RenderScene renderScene) {
+		super(renderScene);
 		this.array = array3f4b2f;
 		this.texture2D = texture2D;
 		this.drawmode = drawmode;
 		this.passes = passes;
 	}
 	
-	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, RenderPass[] passes) {
-		this(array3f4b2f, texture2D, GL_TRIANGLES, passes);
+	public ModelObjectRenderer(EaglVertexArray array3f4b2f, int texture2D, RenderPass[] passes, RenderScene renderScene) {
+		this(array3f4b2f, texture2D, GL_TRIANGLES, passes, renderScene);
 	}
 	
 	public float ditherBlend;
@@ -145,7 +146,28 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	}
 
 	public void renderCubeMap(GlobalRenderer globalRenderer) {
-		
+		globalRenderer.modelMatrix.pushMatrix();
+		transform(globalRenderer);
+		if(isInFrustum(globalRenderer)) {
+			ProgramManager m = globalRenderer.progManager;
+			m.cubemap_3f_4b_2f_uniform.use();
+			m.cubemap_3f_4b_2f_uniform_specular.set1f(specular);
+			m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
+			m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
+			m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
+			m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
+			m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+			m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
+					globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+					globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+					globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
+			);
+			GLStateManager.bindTexture2D(texture2D);
+			globalRenderer.sunShadowMap.bindDepthTexture(1);
+			globalRenderer.updateMatrix(m.cubemap_3f_4b_2f_uniform);
+			array.drawAll(drawmode);
+		}
+		globalRenderer.modelMatrix.popMatrix();
 	}
 
 	public void renderShadow(GlobalRenderer globalRenderer) {

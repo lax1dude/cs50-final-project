@@ -1,6 +1,6 @@
 package net.eagtek.eagl;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;

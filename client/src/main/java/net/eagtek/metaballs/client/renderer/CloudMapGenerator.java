@@ -1,11 +1,10 @@
 package net.eagtek.metaballs.client.renderer;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 import net.eagtek.eagl.EaglFramebuffer;
 import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
 import net.eagtek.metaballs.MathUtil;
-import net.eagtek.metaballs.client.GameClient;
 import net.eagtek.metaballs.client.GameConfiguration;
 
 public class CloudMapGenerator {
@@ -19,34 +18,36 @@ public class CloudMapGenerator {
 	private static final int tilesSubdivisions = 4;
 	
 	private int bufferSwap = 0;
-	
-	private int cloudOffset;
+
+	private float cloudOffsetX;
+	private float cloudOffsetZ;
 	
 	public CloudMapGenerator(GlobalRenderer renderer) {
 		this.renderer = renderer;
 		
 		glViewport(0, 0, GameConfiguration.cloudMapResolution, GameConfiguration.cloudMapResolution);
-		glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		
-		this.bufferA = new EaglFramebuffer(DepthBufferType.NONE, GL_RG16F);
+		this.bufferA = new EaglFramebuffer(DepthBufferType.NONE, GL_R16F);
 		
 		bufferA.setSize(GameConfiguration.cloudMapResolution, GameConfiguration.cloudMapResolution);
 		bufferA.bindFramebuffer();
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		this.bufferB = new EaglFramebuffer(DepthBufferType.NONE, GL_RG16F);
+		this.bufferB = new EaglFramebuffer(DepthBufferType.NONE, GL_R16F);
 		
 		bufferB.setSize(GameConfiguration.cloudMapResolution, GameConfiguration.cloudMapResolution);
 		bufferB.bindFramebuffer();
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		this.bufferC = new EaglFramebuffer(DepthBufferType.NONE, GL_RG16F);
+		this.bufferC = new EaglFramebuffer(DepthBufferType.NONE, GL_R16F);
 		
 		bufferC.setSize(GameConfiguration.cloudMapResolution, GameConfiguration.cloudMapResolution);
 		bufferC.bindFramebuffer();
 		glClear(GL_COLOR_BUFFER_BIT);
-		
-		this.cloudOffset = MathUtil.random.nextInt(100);
+
+		this.cloudOffsetX = MathUtil.random.nextFloat() * 20.0f;
+		this.cloudOffsetZ = MathUtil.random.nextFloat() * 20.0f;
 		
 	}
 	
@@ -60,6 +61,8 @@ public class CloudMapGenerator {
 		++tileID;
 		
 		if(tileID > tilesSubdivisions * tilesSubdivisions) {
+			cloudOffsetX += scene.windX;
+			cloudOffsetZ += scene.windZ;
 			tileID = 0;
 			++bufferSwap;
 			if(bufferSwap > 2) bufferSwap = 0;
@@ -77,13 +80,22 @@ public class CloudMapGenerator {
 		glEnable(GL_SCISSOR_TEST);
 		glScissor(tileX, tileY, size, size);
 		
-		renderer.progManager.clouds_generate.use();
-		renderer.progManager.clouds_generate_cloudDensity.set1f(0.3f);
-		renderer.progManager.clouds_generate_cloudOffset.set2f(renderer.client.totalTicksF / 6400.0f + cloudOffset, renderer.client.totalTicksF / 3200.0f);
-		renderer.progManager.clouds_generate_cloudMorph.set1f(renderer.client.totalTicksF / 1000000.0f);
-		renderer.progManager.clouds_generate_sunPosition.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-		
-		renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
+		if(scene.cloudDensity > 0.0f) {
+			renderer.progManager.clouds_generate.use();
+			renderer.progManager.clouds_generate_cloudDensity.set1f(scene.cloudDensity);
+	
+			float playerX = GameConfiguration.cloudsMoveWithPlayer ? (float)(renderer.renderPosX % 10000.0d) * 0.001f : 0.0f;
+			float playerZ = GameConfiguration.cloudsMoveWithPlayer ? (float)(renderer.renderPosZ % 10000.0d) * 0.001f : 0.0f;
+			renderer.progManager.clouds_generate_cloudOffset.set2f(cloudOffsetX - playerX, cloudOffsetZ - playerZ);
+			
+			renderer.progManager.clouds_generate_cloudMorph.set1f(GameConfiguration.cloudsMoveWithPlayer ? (float)(renderer.renderPosY % 10000.0d) * 0.001f : 0.0f);
+			renderer.progManager.clouds_generate_sunPosition.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+			
+			renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
+		}else {
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+		}
 		
 		glDisable(GL_SCISSOR_TEST);
 		
@@ -98,7 +110,7 @@ public class CloudMapGenerator {
 	}
 	
 	public float blendAmount() {
-		return tileID / (float)(tilesSubdivisions * tilesSubdivisions);
+		return (float) (Math.tan(((tileID / (float)(tilesSubdivisions * tilesSubdivisions)) - 0.5f) * 1.8f) * 0.385f + 0.5f);
 	}
 	
 	public void destroy() {

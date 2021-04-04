@@ -1,6 +1,6 @@
 package net.eagtek.metaballs.client.renderer;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 import java.util.Random;
 
@@ -138,6 +138,17 @@ public class ProgramManager {
 	public EaglUniform clouds_generate_cloudMorph;
 	public EaglUniform clouds_generate_sunPosition;
 	
+	public EaglProgram cubemap_3f_4b_2f_uniform;
+	public EaglUniform cubemap_3f_4b_2f_uniform_metallic;
+	public EaglUniform cubemap_3f_4b_2f_uniform_roughness;
+	public EaglUniform cubemap_3f_4b_2f_uniform_specular;
+	public EaglUniform cubemap_3f_4b_2f_uniform_emission;
+	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrix;
+	public EaglUniform cubemap_3f_4b_2f_uniform_sunDirection;
+	public EaglUniform cubemap_3f_4b_2f_uniform_sunRGB;
+	
+	public EaglProgram irradiance_map_generate;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -178,6 +189,8 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("lightDiffuse").set1i(4);
 		gbuffer_combined.getUniform("lightSpecular").set1i(5);
 		gbuffer_combined.getUniform("ssaoBuffer").set1i(6);
+		gbuffer_combined.getUniform("cubemap").set1i(7);
+		gbuffer_combined.getUniform("irradianceMap").set1i(8);
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_sun.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_sun.vsh");
@@ -441,6 +454,27 @@ public class ProgramManager {
 		clouds_generate_cloudOffset = clouds_generate.getUniform("cloudOffset");
 		clouds_generate_cloudMorph = clouds_generate.getUniform("cloudMorph");
 		clouds_generate_sunPosition = clouds_generate.getUniform("sunPosition");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/cubemap_3f_4b_2f_uniform.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "cubemap_3f_4b_2f_uniform.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "cubemap_3f_4b_2f_uniform.fsh");
+		this.cubemap_3f_4b_2f_uniform = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		cubemap_3f_4b_2f_uniform.getUniform("tex").set1i(0);
+		cubemap_3f_4b_2f_uniform.getUniform("shadowMap").set1i(1);
+		cubemap_3f_4b_2f_uniform_metallic = cubemap_3f_4b_2f_uniform.getUniform("metallic");
+		cubemap_3f_4b_2f_uniform_roughness = cubemap_3f_4b_2f_uniform.getUniform("roughness");
+		cubemap_3f_4b_2f_uniform_specular = cubemap_3f_4b_2f_uniform.getUniform("specular");
+		cubemap_3f_4b_2f_uniform_emission = cubemap_3f_4b_2f_uniform.getUniform("emission");
+		cubemap_3f_4b_2f_uniform_shadowMatrix = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_2f_uniform_sunDirection = cubemap_3f_4b_2f_uniform.getUniform("sunDirection");
+		cubemap_3f_4b_2f_uniform_sunRGB = cubemap_3f_4b_2f_uniform.getUniform("sunRGB");
+
+		source = ResourceLoader.loadResourceString("metaballs/shaders/irradiance_map_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "irradiance_map_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "irradiance_map_generate.fsh");
+		this.irradiance_map_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		irradiance_map_generate.getUniform("cubeMap").set1i(0);
 	}
 	
 	private static final float lerp(float a, float b, float f){

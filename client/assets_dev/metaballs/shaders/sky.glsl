@@ -52,17 +52,33 @@ uniform sampler2D cloudTextureB;
 
 uniform float cloudTextureBlend;
 
+float invPI = 0.318309886;
+vec2 clipSpaceFromDir(vec3 dir) {
+	return vec2(
+		atan(dir.x, dir.z) * invPI,
+        acos(dir.y) * invPI * 4.0 - 1.0
+	);
+}
+
 void main() {
 	vec3 normal = normalize(normalv);
 	
 	float sunBrightness = max(dot(normal, -sunDirection), 0.0);
-	sunBrightness = pow(sunBrightness, 300.0f / sunSize);
 	
-	vec2 cloudMapPos = vec2(normal.x, normal.z) * 0.5 + 0.5;
+	vec2 cloudMapPos = clipSpaceFromDir(-normal) * 0.5 + 0.5;
 	
-	float cloudMapSample = mix(texture(cloudTextureA, cloudMapPos).r, texture(cloudTextureB, cloudMapPos).r, cloudTextureBlend) * max(dot(normal, vec3(0.0, -1.0, 0.0)), 0.0) * 0.001;
+	float cloudMapSample = mix(texture(cloudTextureA, cloudMapPos).r, texture(cloudTextureB, cloudMapPos).r, cloudTextureBlend) * max(-normal.y, 0.0) * 0.001 * pow(clamp((sunDirection.y + 0.1), 0.0, 1.0), 2.0);
 	
-    fragOut = colorv + (sunColor * sunBrightness) + (sunColor * cloudMapSample);
+	float darkness = pow(cloudMapSample * 100.0, 4.0) * 30.0;
+	darkness /= darkness + 2.0;
+	darkness = clamp(darkness, 0.0, 1.0);
+	
+    fragOut = mix(
+		colorv + sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0) + cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)),
+		vec3(0.0),
+		darkness * 0.9
+	);
+	
 }
 
 #endif

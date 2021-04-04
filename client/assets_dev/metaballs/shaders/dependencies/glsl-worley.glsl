@@ -1,11 +1,10 @@
 
 // this file is unlicensed
 
-// Hash by David_Hoskins
-#define UI0 1597334673U
-#define UI1 3812015801U
+#define UI0 3957240924U
+#define UI1 3294940080U
 #define UI2 uvec2(UI0, UI1)
-#define UI3 uvec3(UI0, UI1, 2798796415U)
+#define UI3 uvec3(UI0, UI1, 3454798537U)
 #define UIF (1.0 / float(0xffffffffU))
 
 vec3 hash33(vec3 p)

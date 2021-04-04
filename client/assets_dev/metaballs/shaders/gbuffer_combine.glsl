@@ -39,6 +39,25 @@ uniform sampler2D lightDiffuse;
 uniform sampler2D lightSpecular;
 uniform sampler2D ssaoBuffer;
 
+uniform samplerCube cubemap;
+uniform sampler2D irradianceMap;
+
+float invPI = 0.318309886;
+vec2 clipSpaceFromDir(vec3 dir) {
+	return vec2(
+		atan(dir.x, dir.z) * invPI,
+        acos(dir.y) * invPI * 4.0 - 1.0
+	);
+}
+
+vec3 sampleIrradianceTexture(vec3 dir) {
+	if(dir.y < 0.0) {
+		return texture(irradianceMap, (clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5) * vec2(0.5, 1.0)).rgb;
+	}else {
+		return texture(irradianceMap, (clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5) * vec2(0.5, 1.0) + vec2(0.5, 0.0)).rgb;
+	}
+}
+
 void main() {
 
 	diffuseV = texture(diffuse, v_texCoord);
@@ -48,6 +67,9 @@ void main() {
 	lightDiffuseV = texture(lightDiffuse, v_texCoord).rgb;
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
+	
+	//vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
+	vec3 cubemap = sampleIrradianceTexture(reflect(normalize(positionV), normalC));
 	
 	vec3 color = (diffuseV.rgb * lightDiffuseV * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
 	fragOut = vec4(color, 1.0);

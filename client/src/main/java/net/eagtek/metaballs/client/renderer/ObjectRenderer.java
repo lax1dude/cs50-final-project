@@ -9,8 +9,11 @@ public abstract class ObjectRenderer {
 	public final int uid;
 	public int trackingState = 0;
 	
-	public ObjectRenderer() {
+	public final RenderScene scene;
+	
+	public ObjectRenderer(RenderScene scene) {
 		uid = uidOffset++;
+		this.scene = scene;
 	}
 	
 	@Override

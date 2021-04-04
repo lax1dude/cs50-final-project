@@ -23,6 +23,9 @@ public class GameConfiguration {
 	public static int sunShadowMapResolution = 2048;
 	public static int lightShadowMapResolution = 512;
 	public static int cloudMapResolution = 512;
+
+	public static int cubeMapResolution = 256;
+	public static boolean cubeMapUpdateAllFaces = true;
 	
 	public static float sunShadowDistance = 150.0f;
 	
@@ -35,6 +38,7 @@ public class GameConfiguration {
 	public static boolean enableVolumetricLighting = true; //expensive
 	public static boolean enableBloom = true;
 	public static boolean enableSoftShadows = true;
+	public static boolean cloudsMoveWithPlayer = true;
 	
 	public static float farPlane = 2048.0f;
 	

@@ -23,7 +23,7 @@ import gnu.trove.list.linked.TCharLinkedList;
 import static org.lwjgl.egl.EGL10.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFWNativeEGL.*;
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
 import java.awt.image.BufferedImage;
@@ -463,7 +463,7 @@ public class EaglContext {
 		glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 
 		glfwWindowHint(GLFW_CENTER_CURSOR, GLFW_TRUE);
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);

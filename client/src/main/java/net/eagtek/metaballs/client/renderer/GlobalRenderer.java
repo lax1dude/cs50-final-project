@@ -1,6 +1,6 @@
 package net.eagtek.metaballs.client.renderer;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 import java.io.InputStream;
 import java.nio.ByteOrder;
@@ -66,8 +66,9 @@ public class GlobalRenderer {
 	private EaglVertexArray lightSphere = null;
 	private EaglVertexArray lightHemisphere = null;
 	private EaglVertexArray lightCone = null;
-	
+
 	private EaglVertexArray skyDome = null;
+	private EaglVertexArray skyDomeSmall = null;
 	
 	private ShadowLightRenderer lightTest = null;
 
@@ -75,7 +76,7 @@ public class GlobalRenderer {
 	private final EaglFramebuffer lightBuffer;
 	private final EaglFramebuffer combinedBuffer;
 
-	private final EaglFramebuffer sunShadowMap;
+	public final EaglFramebuffer sunShadowMap;
 	private final EaglFramebuffer sunShadowBuffer;
 	
 	private final EaglFramebuffer lightShadowMap;
@@ -92,7 +93,8 @@ public class GlobalRenderer {
 	private final EaglFramebuffer toneMapped;
 	
 	public final CloudMapGenerator cloudMapGenerator;
-
+	public final CubemapGenerator cubemapGenerator;
+	
 	private float exposure = 2.0f;
 	private float targetExposure = 2.0f;
 	
@@ -159,16 +161,16 @@ public class GlobalRenderer {
 			InputStream stream;
 
 			stream = ResourceLoader.loadResource("metaballs/models/testscene.mdl");
-			client.getScene().objectRenderers.add(testModelRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque));
+			client.getScene().objectRenderers.add(testModelRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/longarms.mdl");
-			client.getScene().objectRenderers.add(longArmsRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque));
+			client.getScene().objectRenderers.add(longArmsRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/banana.mdl");
-			client.getScene().objectRenderers.add(bananaRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque));
-			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque));
+			client.getScene().objectRenderers.add(bananaRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
+			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/lightcone.mdl");
@@ -185,6 +187,10 @@ public class GlobalRenderer {
 			
 			stream = ResourceLoader.loadResource("metaballs/models/skydome.mdl");
 			skyDome = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			stream = ResourceLoader.loadResource("metaballs/models/skydome-reflect.mdl");
+			skyDomeSmall = EaglModelLoader.loadModel(stream);
 			stream.close();
 			
 		}catch(Throwable tt) {
@@ -236,6 +242,7 @@ public class GlobalRenderer {
 		exposureCalcTexture = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		
 		cloudMapGenerator = new CloudMapGenerator(this);
+		cubemapGenerator = new CubemapGenerator(this);
 		
 	}
 
@@ -266,7 +273,7 @@ public class GlobalRenderer {
 		
 		scene.sunSize = 0.15f;
 		
-		scene.sunKelvin = (int) lerp(1500.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
+		scene.sunKelvin = (int) lerp(1500.0f, 6000.0f, Math.min(timeOfDay, 1.0f));
 		
 		scene.fogKelvin = 6000;
 		
@@ -274,7 +281,7 @@ public class GlobalRenderer {
 		
 		int w = client.context.getInnerWidth();
 		int h = client.context.getInnerHeight();
-
+		
 		// ================================================= RENDER THE G BUFFER =======================================================
 		
 		gBuffer.setSize(w, h);
@@ -295,7 +302,6 @@ public class GlobalRenderer {
 		
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_GREATER);
-		glDepthMask(true);
 		
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
@@ -334,7 +340,6 @@ public class GlobalRenderer {
 		glDepthFunc(GL_GREATER);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
-		glDepthMask(true);
 
 		// ================================================= RENDER SUN SHADOW MAPS =======================================================
 		
@@ -533,7 +538,6 @@ public class GlobalRenderer {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
-		glDepthMask(false);
 		
 		progManager.sunshadow_generate.use();
 		progManager.sunshadow_generate_matrixA.setMatrix4f(sunShadowProjViewA);
@@ -550,6 +554,10 @@ public class GlobalRenderer {
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		//glDisable(GL_STENCIL_TEST);
+
+		// ============================================= RENDER ENVIRONMENT CUBEMAP ===================================================
+		
+		cubemapGenerator.redrawCubemap(scene);
 		
 		// ================================================= RENDER LINEAR DEPTH BUFFER =======================================================
 
@@ -561,7 +569,6 @@ public class GlobalRenderer {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
-		glDepthMask(false);
 		
 		progManager.linearize_depth.use();
 		progManager.linearize_depth_farPlane.set1f(GameConfiguration.farPlane);
@@ -579,7 +586,6 @@ public class GlobalRenderer {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
-			glDepthMask(false);
 			
 			progManager.ssao_generate.use();
 			progManager.ssao_generate_randomTime.set1f(client.totalTicksF);
@@ -826,39 +832,18 @@ public class GlobalRenderer {
 		lightBuffer.bindColorTexture(1, 5);
 		ambientOcclusionBuffer.bindColorTexture(0, 6);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		cubemapGenerator.bindCubemap(7);
+		cubemapGenerator.bindIrradianceTexture(8);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		ambientOcclusionBuffer.bindColorTexture(0, 6);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
-
-		glEnable(GL_STENCIL_TEST);
-		glStencilMask(0x0);
-		glStencilFunc(GL_EQUAL, 0, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 		
-		progManager.sky.use();
-		updateMatrix(progManager.sky);
+		this.renderSkyDome(scene, false);
 		
-		kelvin = scene.sunKelvin;
-		float scale = 10.0f;
-		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
-		
-		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-		progManager.sky_sunSize.set1f(scene.sunSize);
-		
-		float altitude = (float) renderPosY;
-		if(altitude > 100000.0f) altitude = 100000.0f;
-		if(altitude < -1000.0f) altitude = -1000.0f;
-		progManager.sky_altitude.set1f(altitude);
-
-		this.cloudMapGenerator.bindTextureA(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		this.cloudMapGenerator.bindTextureB(1);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
-		skyDome.drawAll(GL_TRIANGLES);
-		
-		glDisable(GL_STENCIL_TEST);
 		if(GameConfiguration.enableVolumetricLighting && scene.lightShafts) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
@@ -890,7 +875,6 @@ public class GlobalRenderer {
 			glClear(GL_COLOR_BUFFER_BIT);
 			glDisable(GL_DEPTH_TEST);
 			glDisable(GL_CULL_FACE);
-			glDepthMask(false);
 			
 			progManager.light_shaft_generate.use();
 			progManager.light_shaft_generate_shadowMatrixA.setMatrix4f(sunShadowProjViewA);
@@ -1103,7 +1087,8 @@ public class GlobalRenderer {
 		
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
-		postBufferA.bindColorTexture(0);
+		postBufferA.bindColorTexture(0);//TODO
+		//this.cubemapGenerator.bindIrradianceTexture(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		// ================================================= RENDER FXAA =======================================================
@@ -1126,8 +1111,7 @@ public class GlobalRenderer {
 		progManager.post_fxaa_edgeThresholdMin.set1f(0.04f);
 		progManager.post_fxaa_screenSize.set2f(w, h);
 		
-		toneMapped.bindColorTexture(0, 0);//TODO
-		//this.cloudMapGenerator.buffer.bindColorTexture(0);
+		toneMapped.bindColorTexture(0, 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		++framesPassed;
@@ -1142,6 +1126,42 @@ public class GlobalRenderer {
 		}
 	}
 	
+	public void renderSkyDome(RenderScene scene, boolean lowPolySky) {
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0x0);
+		glStencilFunc(GL_EQUAL, 0, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+		
+		progManager.sky.use();
+		updateMatrix(progManager.sky);
+		
+		int kelvin = scene.sunKelvin;
+		float scale = 10.0f;
+		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+		
+		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+		progManager.sky_sunSize.set1f(scene.sunSize);
+		
+		float altitude = (float) renderPosY;
+		if(altitude > 100000.0f) altitude = 100000.0f;
+		if(altitude < -1000.0f) altitude = -1000.0f;
+		progManager.sky_altitude.set1f(altitude);
+
+		this.cloudMapGenerator.bindTextureA(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		this.cloudMapGenerator.bindTextureB(1);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
+		
+		if(lowPolySky) {
+			skyDomeSmall.drawAll(GL_TRIANGLES);
+		}else {
+			skyDome.drawAll(GL_TRIANGLES);
+		}
+		
+		glDisable(GL_STENCIL_TEST);
+	}
+
 	public void updateMatrix(EaglProgram prog) {
 		if(prog.matrix_m != null) prog.matrix_m.setMatrix4f(modelMatrix);
 		if(prog.matrix_v != null) prog.matrix_v.setMatrix4f(cameraMatrix);
@@ -1330,8 +1350,10 @@ public class GlobalRenderer {
 		this.postBufferC.destroy();
 		this.toneMapped.destroy();
 		this.exposureCalcTexture.destroy();
-		this.skyDome.destroy();
+		this.skyDome.destroyWithBuffers();
 		this.cloudMapGenerator.destroy();
+		this.cubemapGenerator.destroy();
+		this.skyDomeSmall.destroyWithBuffers();
 	}
 
 }

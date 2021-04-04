@@ -1,6 +1,6 @@
 package net.eagtek.eagl;
 
-import static org.lwjgl.opengles.GLES30.*;
+import static org.lwjgl.opengles.GLES31.*;
 
 public class GLStateManager {
 
@@ -16,6 +16,11 @@ public class GLStateManager {
 			if(boundTextureUnit != GL_TEXTURE0 + slot) glActiveTexture(boundTextureUnit = GL_TEXTURE0 + slot);
 			glBindTexture(GL_TEXTURE_2D, boundTexture2D[slot] = tex);
 		}
+	}
+	
+	public static final void bindCubemap2D(int tex, int slot) {
+		glActiveTexture(boundTextureUnit = GL_TEXTURE0 + slot);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, tex);
 	}
 	
 	private static int boundProgram = -1;
@@ -35,4 +40,5 @@ public class GLStateManager {
 	public static final void bindVertexArray(int vao) {
 		if(boundVertexArray != vao) glBindVertexArray(boundVertexArray = vao);
 	}
+	
 }
