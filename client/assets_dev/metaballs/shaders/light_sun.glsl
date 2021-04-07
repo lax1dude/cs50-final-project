@@ -78,10 +78,10 @@ void main() {
 		vec3 specular = nominator / max(denominator, 0.001);
 	
 		float NdotL = max(dot(normalC, L), 0.0);
-		diffuseOut = sunRGB * shadow * (kD / PI * NdotL) + vec3(0.1);
+		diffuseOut = sunRGB * shadow * (kD / PI * NdotL) + vec3(0.0);
 		specularOut = sunRGB * shadow * specular * NdotL * materialV.b;
 	}else {
-		diffuseOut = vec3(0.1);
+		diffuseOut = vec3(0.0);
 		specularOut = vec3(0.0);
 	}
 }

@@ -53,6 +53,11 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	public float specular;
 	public float ssr;
 	public float emission;
+	
+	public boolean diffuseOverride = false;
+	public float r = 0.0f;
+	public float g = 0.0f;
+	public float b = 0.0f;
 
 	public double posX = 0.0d;
 	public double posY = 0.0d;
@@ -92,6 +97,18 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		this.emission = emission;
 		return this;
 	}
+	
+	public ModelObjectRenderer setMaterialAndDiffuse(float diffuseR, float diffuseG, float diffuseB, float ditherBlend, float metallic, float roughness, float specular, float ssr, float emission) {
+		return setDiffuse(diffuseR, diffuseG, diffuseB).setMaterial(ditherBlend, metallic, roughness, specular, ssr, emission);
+	}
+
+	public ModelObjectRenderer setDiffuse(float diffuseR, float diffuseG, float diffuseB) {
+		this.diffuseOverride = true;
+		this.r = diffuseR;
+		this.g = diffuseG;
+		this.b = diffuseB;
+		return this;
+	}
 
 	@Override
 	public boolean shouldRenderPass(RenderPass pass) {
@@ -127,15 +144,27 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		transform(globalRenderer);
 		if(isInFrustum(globalRenderer)) {
 			ProgramManager m = globalRenderer.progManager;
-			m.gbuffer_3f_4b_2f_uniform.use();
-			m.gbuffer_3f_4b_2f_uniform_ditherBlend.set1f(ditherBlend);
-			m.gbuffer_3f_4b_2f_uniform_specular.set1f(specular);
-			m.gbuffer_3f_4b_2f_uniform_metallic.set1f(metallic);
-			m.gbuffer_3f_4b_2f_uniform_roughness.set1f(roughness);
-			m.gbuffer_3f_4b_2f_uniform_ssr.set1f(ssr);
-			m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
-			GLStateManager.bindTexture2D(texture2D);
-			globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
+			if(diffuseOverride) {
+				m.gbuffer_3f_4b_uniform.use();
+				m.gbuffer_3f_4b_uniform_ditherBlend.set1f(ditherBlend);
+				m.gbuffer_3f_4b_uniform_specular.set1f(specular);
+				m.gbuffer_3f_4b_uniform_metallic.set1f(metallic);
+				m.gbuffer_3f_4b_uniform_roughness.set1f(roughness);
+				m.gbuffer_3f_4b_uniform_ssr.set1f(ssr);
+				m.gbuffer_3f_4b_uniform_emission.set1f(emission);
+				m.gbuffer_3f_4b_uniform_diffuseColor.set3f(r, g, b);
+				globalRenderer.updateMatrix(m.gbuffer_3f_4b_uniform);
+			}else {
+				m.gbuffer_3f_4b_2f_uniform.use();
+				m.gbuffer_3f_4b_2f_uniform_ditherBlend.set1f(ditherBlend);
+				m.gbuffer_3f_4b_2f_uniform_specular.set1f(specular);
+				m.gbuffer_3f_4b_2f_uniform_metallic.set1f(metallic);
+				m.gbuffer_3f_4b_2f_uniform_roughness.set1f(roughness);
+				m.gbuffer_3f_4b_2f_uniform_ssr.set1f(ssr);
+				m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
+				globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
+				GLStateManager.bindTexture2D(texture2D);
+			}
 			array.drawAll(drawmode);
 		}
 		globalRenderer.modelMatrix.popMatrix();
@@ -150,21 +179,38 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		transform(globalRenderer);
 		if(isInFrustum(globalRenderer)) {
 			ProgramManager m = globalRenderer.progManager;
-			m.cubemap_3f_4b_2f_uniform.use();
-			m.cubemap_3f_4b_2f_uniform_specular.set1f(specular);
-			m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
-			m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
-			m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
-			m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
-			m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-			m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
-					globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-					globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-					globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
-			);
-			GLStateManager.bindTexture2D(texture2D);
+			if(diffuseOverride) {
+				m.cubemap_3f_4b_uniform.use();
+				m.cubemap_3f_4b_uniform_specular.set1f(specular);
+				m.cubemap_3f_4b_uniform_metallic.set1f(metallic);
+				m.cubemap_3f_4b_uniform_roughness.set1f(roughness);
+				m.cubemap_3f_4b_uniform_emission.set1f(emission);
+				m.cubemap_3f_4b_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+				m.cubemap_3f_4b_uniform_sunRGB.set3f(
+						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
+				);
+				m.cubemap_3f_4b_uniform_diffuseColor.set3f(r, g, b);
+				globalRenderer.updateMatrix(m.cubemap_3f_4b_uniform);
+			}else {
+				m.cubemap_3f_4b_2f_uniform.use();
+				m.cubemap_3f_4b_2f_uniform_specular.set1f(specular);
+				m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
+				m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
+				m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
+				m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+				m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
+						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
+				);
+				globalRenderer.updateMatrix(m.cubemap_3f_4b_2f_uniform);
+				GLStateManager.bindTexture2D(texture2D);
+			}
 			globalRenderer.sunShadowMap.bindDepthTexture(1);
-			globalRenderer.updateMatrix(m.cubemap_3f_4b_2f_uniform);
 			array.drawAll(drawmode);
 		}
 		globalRenderer.modelMatrix.popMatrix();

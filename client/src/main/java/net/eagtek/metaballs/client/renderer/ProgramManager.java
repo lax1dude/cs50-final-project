@@ -22,7 +22,17 @@ public class ProgramManager {
 	public EaglUniform gbuffer_3f_4b_2f_uniform_ssr;
 	public EaglUniform gbuffer_3f_4b_2f_uniform_emission;
 
+	public EaglProgram gbuffer_3f_4b_uniform;
+	public EaglUniform gbuffer_3f_4b_uniform_ditherBlend;
+	public EaglUniform gbuffer_3f_4b_uniform_metallic;
+	public EaglUniform gbuffer_3f_4b_uniform_roughness;
+	public EaglUniform gbuffer_3f_4b_uniform_specular;
+	public EaglUniform gbuffer_3f_4b_uniform_ssr;
+	public EaglUniform gbuffer_3f_4b_uniform_emission;
+	public EaglUniform gbuffer_3f_4b_uniform_diffuseColor;
+
 	public EaglProgram gbuffer_combined;
+	public EaglUniform gbuffer_combined_irradianceMapBlend;
 
 	public EaglProgram light_sun;
 	public EaglUniform light_sun_color;
@@ -147,7 +157,24 @@ public class ProgramManager {
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunDirection;
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunRGB;
 	
+	public EaglProgram cubemap_3f_4b_uniform;
+	public EaglUniform cubemap_3f_4b_uniform_metallic;
+	public EaglUniform cubemap_3f_4b_uniform_roughness;
+	public EaglUniform cubemap_3f_4b_uniform_specular;
+	public EaglUniform cubemap_3f_4b_uniform_emission;
+	public EaglUniform cubemap_3f_4b_uniform_shadowMatrix;
+	public EaglUniform cubemap_3f_4b_uniform_sunDirection;
+	public EaglUniform cubemap_3f_4b_uniform_sunRGB;
+	public EaglUniform cubemap_3f_4b_uniform_diffuseColor;
+	
 	public EaglProgram irradiance_map_generate;
+	
+	public EaglProgram light_bulb_renderer;
+	public EaglUniform light_bulb_renderer_aspectRatio;
+	
+	public EaglProgram lens_flare;
+	public EaglUniform lens_flare_intensity;
+	public EaglUniform lens_flare_sunTexCoord;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -177,6 +204,20 @@ public class ProgramManager {
 		gbuffer_3f_4b_2f_uniform_ssr = gbuffer_3f_4b_2f_uniform.getUniform("ssr");
 		gbuffer_3f_4b_2f_uniform_emission = gbuffer_3f_4b_2f_uniform.getUniform("emission");
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/gbuffer_3f_4b_uniform.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "gbuffer_3f_4b_uniform.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "gbuffer_3f_4b_uniform.fsh");
+		this.gbuffer_3f_4b_uniform = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		gbuffer_3f_4b_uniform.getUniform("tex").set1i(0);
+		gbuffer_3f_4b_uniform_ditherBlend = gbuffer_3f_4b_uniform.getUniform("ditherBlend");
+		gbuffer_3f_4b_uniform_metallic = gbuffer_3f_4b_uniform.getUniform("metallic");
+		gbuffer_3f_4b_uniform_roughness = gbuffer_3f_4b_uniform.getUniform("roughness");
+		gbuffer_3f_4b_uniform_specular = gbuffer_3f_4b_uniform.getUniform("specular");
+		gbuffer_3f_4b_uniform_ssr = gbuffer_3f_4b_uniform.getUniform("ssr");
+		gbuffer_3f_4b_uniform_emission = gbuffer_3f_4b_uniform.getUniform("emission");
+		gbuffer_3f_4b_uniform_diffuseColor = gbuffer_3f_4b_uniform.getUniform("diffuseColor");
+		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/gbuffer_combine.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "gbuffer_combine.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "gbuffer_combine.fsh");
@@ -190,7 +231,10 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("lightSpecular").set1i(5);
 		gbuffer_combined.getUniform("ssaoBuffer").set1i(6);
 		gbuffer_combined.getUniform("cubemap").set1i(7);
-		gbuffer_combined.getUniform("irradianceMap").set1i(8);
+		gbuffer_combined.getUniform("irradianceMapA").set1i(8);
+		gbuffer_combined.getUniform("irradianceMapB").set1i(9);
+		
+		gbuffer_combined_irradianceMapBlend = gbuffer_combined.getUniform("irradianceMapBlend");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_sun.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_sun.vsh");
@@ -469,12 +513,47 @@ public class ProgramManager {
 		cubemap_3f_4b_2f_uniform_shadowMatrix = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrix");
 		cubemap_3f_4b_2f_uniform_sunDirection = cubemap_3f_4b_2f_uniform.getUniform("sunDirection");
 		cubemap_3f_4b_2f_uniform_sunRGB = cubemap_3f_4b_2f_uniform.getUniform("sunRGB");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/cubemap_3f_4b_uniform.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "cubemap_3f_4b_uniform.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "cubemap_3f_4b_uniform.fsh");
+		this.cubemap_3f_4b_uniform = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		cubemap_3f_4b_uniform.getUniform("tex").set1i(0);
+		cubemap_3f_4b_uniform.getUniform("shadowMap").set1i(1);
+		cubemap_3f_4b_uniform_metallic = cubemap_3f_4b_uniform.getUniform("metallic");
+		cubemap_3f_4b_uniform_roughness = cubemap_3f_4b_uniform.getUniform("roughness");
+		cubemap_3f_4b_uniform_specular = cubemap_3f_4b_uniform.getUniform("specular");
+		cubemap_3f_4b_uniform_emission = cubemap_3f_4b_uniform.getUniform("emission");
+		cubemap_3f_4b_uniform_shadowMatrix = cubemap_3f_4b_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_uniform_sunDirection = cubemap_3f_4b_uniform.getUniform("sunDirection");
+		cubemap_3f_4b_uniform_sunRGB = cubemap_3f_4b_uniform.getUniform("sunRGB");
+		cubemap_3f_4b_uniform_diffuseColor = cubemap_3f_4b_uniform.getUniform("diffuseColor");
 
 		source = ResourceLoader.loadResourceString("metaballs/shaders/irradiance_map_generate.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "irradiance_map_generate.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "irradiance_map_generate.fsh");
 		this.irradiance_map_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		irradiance_map_generate.getUniform("cubeMap").set1i(0);
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/light_bulb_renderer.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_bulb_renderer.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "light_bulb_renderer.fsh");
+		this.light_bulb_renderer = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		light_bulb_renderer.getUniform("lightBulbTexture").set1i(0);
+		light_bulb_renderer_aspectRatio = light_bulb_renderer.getUniform("aspectRatio");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/lens_flare.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "lens_flare.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "lens_flare.fsh");
+		this.lens_flare = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		lens_flare.getUniform("flareTexture").set1i(0);
+		lens_flare.getUniform("depthTexture").set1i(1);
+		lens_flare_intensity = lens_flare.getUniform("intensity");
+		lens_flare_sunTexCoord = lens_flare.getUniform("sunTexCoord");
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -512,6 +591,12 @@ public class ProgramManager {
 		position_to_view.destroy();
 		add_positions.destroy();
 		clouds_generate.destroy();
+		cubemap_3f_4b_2f_uniform.destroy();
+		irradiance_map_generate.destroy();
+		gbuffer_3f_4b_uniform.destroy();
+		cubemap_3f_4b_uniform.destroy();
+		light_bulb_renderer.destroy();
+		lens_flare.destroy();
 	}
 
 }

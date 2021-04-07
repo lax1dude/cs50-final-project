@@ -40,22 +40,22 @@ uniform sampler2D lightSpecular;
 uniform sampler2D ssaoBuffer;
 
 uniform samplerCube cubemap;
-uniform sampler2D irradianceMap;
+uniform sampler2D irradianceMapA;
+uniform sampler2D irradianceMapB;
+
+uniform float irradianceMapBlend;
 
 float invPI = 0.318309886;
 vec2 clipSpaceFromDir(vec3 dir) {
-	return vec2(
-		atan(dir.x, dir.z) * invPI,
-        acos(dir.y) * invPI * 4.0 - 1.0
-	);
+    return vec2(
+        atan(dir.x, dir.z) * invPI,
+        acos(dir.y) * invPI * 2.0 - 1.0
+    );
 }
 
 vec3 sampleIrradianceTexture(vec3 dir) {
-	if(dir.y < 0.0) {
-		return texture(irradianceMap, (clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5) * vec2(0.5, 1.0)).rgb;
-	}else {
-		return texture(irradianceMap, (clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5) * vec2(0.5, 1.0) + vec2(0.5, 0.0)).rgb;
-	}
+	vec2 pos = clamp(clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5, 0.01, 0.99);
+	return mix(texture(irradianceMapA, pos).rgb, texture(irradianceMapB, pos).rgb, irradianceMapBlend);
 }
 
 void main() {
@@ -68,11 +68,11 @@ void main() {
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
 	
-	//vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
-	vec3 cubemap = sampleIrradianceTexture(reflect(normalize(positionV), normalC));
+	vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
+	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = (diffuseV.rgb * lightDiffuseV * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
-	fragOut = vec4(color, 1.0);
+	vec3 color = (diffuseV.rgb * (lightDiffuseV + irradiance * 0.3) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
+	fragOut = vec4(mix(color, cubemap * 0.5 + lightSpecularV, materialV.a), 1.0);
 }
 
 #endif

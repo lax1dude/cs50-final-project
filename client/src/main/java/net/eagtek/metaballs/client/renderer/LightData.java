@@ -26,7 +26,10 @@ public class LightData {
 	public Vector3f direction;
 	public float spotRadius;
 	
-	public LightData(LightType type, float emission, float pointsize, double lightX, double lightY, double lightZ) {
+	public float drawPoint;
+	public float lensFlare;
+	
+	public LightData(LightType type, float emission, float pointsize, double lightX, double lightY, double lightZ, float drawPoint, float lensFlare) {
 		this.type = type;
 		this.emission = emission;
 		this.pointsize = pointsize;
@@ -34,6 +37,8 @@ public class LightData {
 		this.lightY = lightY;
 		this.lightZ = lightZ;
 		this.direction = new Vector3f();
+		this.drawPoint = drawPoint;
+		this.lensFlare = lensFlare;
 	}
 	
 	public LightData setRGB(float r, float g, float b) {

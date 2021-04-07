@@ -62,7 +62,7 @@ void main() {
 			 
 			vec4 offset = vec4(samplePos, 1.0);
 			offset = matrix_p * offset; // from view to clip-space
-			offset.xyz /= offset.w; // perspective divide
+			offset.xyz /= offset.w;
 			
 			vec4 samplePos0 = matrix_p_inv * vec4(offset.xy, texture(originalDepth, offset.xy * 0.5 + 0.5).r * 2.0 - 1.0, 1.0);
 			float sampleDepth = samplePos0.z / samplePos0.w;
@@ -72,7 +72,7 @@ void main() {
 			occlusion += (sampleDepth >= samplePos.z ? 1.0 : 0.0) * rangeCheck;    
 		}
 		
-		fragOut = 1.0 - (occlusion / max(divisor, 0.001));
+		fragOut = 1.0;//1.0 - (occlusion / max(divisor, 0.001));
 	}else {
     	fragOut = 1.0;
 	}

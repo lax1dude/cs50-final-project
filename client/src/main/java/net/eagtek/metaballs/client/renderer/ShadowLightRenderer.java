@@ -11,8 +11,8 @@ public class ShadowLightRenderer extends LightData {
 	public int atlasLocation = -1;
 	public LinkedList<ObjectRenderer> objectsInFrustum = null;
 	
-	public ShadowLightRenderer(LightType type, float emission, float pointsize, double lightX, double lightY, double lightZ) {
-		super(type, emission, pointsize, lightX, lightY, lightZ);
+	public ShadowLightRenderer(LightType type, float emission, float pointsize, double lightX, double lightY, double lightZ, float drawPoint, float lensFlare) {
+		super(type, emission, pointsize, lightX, lightY, lightZ, drawPoint, lensFlare);
 	}
 
 }

@@ -4,7 +4,6 @@ bool isInTexture(vec3 pos) {
 }
 
 vec3 computeSunlight(vec3 p_diffuse, vec3 p_normal, vec3 p_position, vec3 p_sunDirection, vec3 p_sunRGB, vec4 p_metallicRoughnessSpecular, sampler2D p_shadowTexture, mat4 p_shadowMatrix) {
-	
 	vec4 shadowPos = p_shadowMatrix * vec4(p_position, 1.0);
 	shadowPos.xyz *= 0.5; shadowPos.xyz += 0.5;
 	if(!isInTexture(shadowPos.xyz) || texture(p_shadowTexture, shadowPos.xy * vec2(0.25, 1.0)).r <= shadowPos.z - 0.001) {

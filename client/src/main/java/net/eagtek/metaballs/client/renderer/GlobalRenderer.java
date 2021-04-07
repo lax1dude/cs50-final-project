@@ -69,10 +69,11 @@ public class GlobalRenderer {
 
 	private EaglVertexArray skyDome = null;
 	private EaglVertexArray skyDomeSmall = null;
+	private EaglVertexArray testSphere = null;
 	
 	private ShadowLightRenderer lightTest = null;
 
-	private final EaglFramebuffer gBuffer;
+	public final EaglFramebuffer gBuffer;
 	private final EaglFramebuffer lightBuffer;
 	private final EaglFramebuffer combinedBuffer;
 
@@ -94,6 +95,8 @@ public class GlobalRenderer {
 	
 	public final CloudMapGenerator cloudMapGenerator;
 	public final CubemapGenerator cubemapGenerator;
+	public final RenderLightBulbs lightBulbRenderer;
+	public final RenderLensFlares lensFlareRenderer;
 	
 	private float exposure = 2.0f;
 	private float targetExposure = 2.0f;
@@ -115,6 +118,9 @@ public class GlobalRenderer {
 	private float grainEndRandom = 0.0f;
 	
 	private boolean nextTick = true;
+	
+	public int displayW;
+	public int displayH;
 	
 	public int getFramerate() {
 		return prevFramesPassed;
@@ -142,7 +148,6 @@ public class GlobalRenderer {
 		t.put_vec3f(-1.0f,  1.0f, 0.0f).put_vec2f(0.0f, 1.0f).endVertex();
 		t.put_vec3f(-1.0f, -1.0f, 0.0f).put_vec2f(0.0f, 0.0f).endVertex();
 		t.put_vec3f( 1.0f,  1.0f, 0.0f).put_vec2f(1.0f, 1.0f).endVertex();
-		t.put_vec3f(-1.0f,  1.0f, 0.0f).put_vec2f(0.0f, 1.0f).endVertex();
 		t.uploadVertexes(vbo, true);
 		t.destroy();
 		
@@ -156,6 +161,8 @@ public class GlobalRenderer {
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
 		//load test model =====================================================
+		
+		this.rand = new Random();
 		
 		try {
 			InputStream stream;
@@ -193,6 +200,16 @@ public class GlobalRenderer {
 			skyDomeSmall = EaglModelLoader.loadModel(stream);
 			stream.close();
 			
+			stream = ResourceLoader.loadResource("metaballs/models/sphere.mdl");
+			testSphere = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			for(int i = 0 ; i < 10; ++i) {
+				ModelObjectRenderer m = new ModelObjectRenderer(testSphere, 0, ModelObjectRenderer.passes_all_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.2f, 0.05f, 0.5f, 0.0f);
+				m.setPosition(rand.nextFloat() * 40.0d - 20.0d, rand.nextFloat() * 0.5d + 0.5d, rand.nextFloat() * 40.0d - 20.0d);
+				client.getScene().objectRenderers.add(m);
+			}
+			
 		}catch(Throwable tt) {
 			throw new RuntimeException("Could not load model files required for rendering", tt);
 		}
@@ -204,13 +221,11 @@ public class GlobalRenderer {
 		client.getScene().sunDirection = new Vector3f(1.0f, -1.0f, 0.0f).normalize();
 		//client.getScene().lightRenderers.add(new LightData(LightType.POINT, 5.0f, 0.0f, 0.0d, 1.0d, 0.0d));
 		
-		this.rand = new Random();
-		
 		for(int i = 0 ; i < 35; ++i) {
-			client.getScene().lightRenderers.add(new LightData(LightType.POINT, rand.nextInt(200), 0.0f, rand.nextGaussian() * 20.0d, rand.nextGaussian() * 3.0d + 4.0d, rand.nextGaussian() * 20.0d).setRGB(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()).setDirection(0.0f, 1.0f, 0.0f));
+			client.getScene().lightRenderers.add(new LightData(LightType.POINT, rand.nextInt(200), 0.0f, rand.nextGaussian() * 20.0d, rand.nextGaussian() * 1.0d + 2.0d, rand.nextGaussian() * 20.0d, 3.0f, 0.0f).setRGB(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()).setDirection(0.0f, 1.0f, 0.0f));
 		}
 		
-		client.getScene().shadowLightRenderers.add(lightTest = (ShadowLightRenderer) new ShadowLightRenderer(LightType.SPOT, 100.0f, 0.2f, 0.0d, 5.0d, 0.0d).setRGB(1.0f, 1.0f, 1.0f).setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(20.0f));
+		client.getScene().shadowLightRenderers.add(lightTest = (ShadowLightRenderer) new ShadowLightRenderer(LightType.SPOT, 100.0f, 0.2f, 0.0d, 5.0d, 0.0d, 1.0f, 0.2f).setRGB(1.0f, 1.0f, 1.0f).setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(20.0f));
 		
 		//setup framebuffer ==================================================
 		
@@ -243,7 +258,8 @@ public class GlobalRenderer {
 		
 		cloudMapGenerator = new CloudMapGenerator(this);
 		cubemapGenerator = new CubemapGenerator(this);
-		
+		lightBulbRenderer = new RenderLightBulbs(this);
+		lensFlareRenderer = new RenderLensFlares(this);
 	}
 
 	public static final Vector3f up = new Vector3f(0.0f, 0.0f, 1.0f);
@@ -279,8 +295,8 @@ public class GlobalRenderer {
 		
 		scene.fogDensity = 0.005f;
 		
-		int w = client.context.getInnerWidth();
-		int h = client.context.getInnerHeight();
+		int w = displayW = client.context.getInnerWidth();
+		int h = displayH = client.context.getInnerHeight();
 		
 		// ================================================= RENDER THE G BUFFER =======================================================
 		
@@ -559,7 +575,7 @@ public class GlobalRenderer {
 		
 		cubemapGenerator.redrawCubemap(scene);
 		
-		// ================================================= RENDER LINEAR DEPTH BUFFER =======================================================
+		// ============================================= RENDER LINEAR DEPTH BUFFER =======================================================
 
 		linearDepthBuffer.setSize(w, h);
 		linearDepthBuffer.bindFramebuffer();
@@ -580,7 +596,7 @@ public class GlobalRenderer {
 			
 			ambientOcclusionBuffer.setSize(w / 2, h / 2);
 			ambientOcclusionBuffer.bindFramebuffer();
-	
+			
 			glViewport(0, 0, w / 2, h / 2);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
@@ -595,7 +611,7 @@ public class GlobalRenderer {
 			gBuffer.bindDepthTexture(1);
 			gBuffer.bindColorTexture(2, 0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
-	
+			
 			// ================================================= BLUR HORIZONTAL OCCLUSION =======================================================
 			
 			ambientOcclusionBlur.setSize(w / 2, h / 2);
@@ -621,6 +637,7 @@ public class GlobalRenderer {
 			linearDepthBuffer.bindColorTexture(0, 1);
 			//gBuffer.bindDepthTexture(1);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
 		}else {
 			ambientOcclusionBuffer.setSize(w / 2, h / 2);
 			ambientOcclusionBuffer.bindFramebuffer();
@@ -821,6 +838,13 @@ public class GlobalRenderer {
 		glViewport(0, 0, w, h);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		ambientOcclusionBuffer.bindColorTexture(0, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		cubemapGenerator.bindIrradianceTextureA(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		cubemapGenerator.bindIrradianceTextureB(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		
 		progManager.gbuffer_combined.use();
 		updateMatrix(progManager.gbuffer_combined);
@@ -831,20 +855,38 @@ public class GlobalRenderer {
 		lightBuffer.bindColorTexture(0, 4);
 		lightBuffer.bindColorTexture(1, 5);
 		ambientOcclusionBuffer.bindColorTexture(0, 6);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cubemapGenerator.bindCubemap(7);
-		cubemapGenerator.bindIrradianceTexture(8);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		cubemapGenerator.bindIrradianceTextureA(8);
+		cubemapGenerator.bindIrradianceTextureB(9);
+		progManager.gbuffer_combined_irradianceMapBlend.set1f(((float)((this.totalTicks + client.partialTicks - 1) % 20.0f)) / 20.0f);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+
+		ambientOcclusionBuffer.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		ambientOcclusionBuffer.bindColorTexture(0, 6);
+		cubemapGenerator.bindIrradianceTextureA(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		cubemapGenerator.bindIrradianceTextureB(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
 		
 		this.renderSkyDome(scene, false);
 		
-		if(GameConfiguration.enableVolumetricLighting && scene.lightShafts) {
+		// ================================================ RENDER LIGHT POINTS =======================================================
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_STENCIL_TEST);
+		glDepthMask(false);
+		
+		lightBulbRenderer.renderLightBulbs(scene);
+		
+		glDepthMask(true);
+		glDisable(GL_BLEND);
+		
+		if(GameConfiguration.enableSunlightVolumetric && scene.lightShafts) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
 			postBufferA.setSize(w, h);
@@ -941,17 +983,32 @@ public class GlobalRenderer {
 		fogG = colorTemperatures.getLinearG(kelvin);
 		fogB = colorTemperatures.getLinearB(kelvin);
 		progManager.blend_atmosphere_shaftColor.set3f(fogR * scene.skyBrightness, fogG * scene.skyBrightness, fogB * scene.skyBrightness);
+
+		ambientOcclusionBuffer.bindColorTexture(0, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		
-		progManager.blend_atmosphere_enableLightShafts.set1i((GameConfiguration.enableVolumetricLighting && scene.lightShafts) ? 1 : 0);
+		progManager.blend_atmosphere_enableLightShafts.set1i((GameConfiguration.enableSunlightVolumetric && scene.lightShafts) ? 1 : 0);
 		progManager.blend_atmosphere_fogDensity.set1f(scene.fogDensity);
 		gBuffer.bindColorTexture(3, 0);
 		ambientOcclusionBuffer.bindColorTexture(0, 1);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+
+		ambientOcclusionBuffer.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		glDisable(GL_BLEND);
 		glDisable(GL_STENCIL_TEST);
+		
+		// ============================================ RENDER LENS FLARES ==================================================
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		lensFlareRenderer.xPixelsInv = 1.0f;
+		lensFlareRenderer.yPixelsInv = (float)w / (float)h;
+		//lensFlareRenderer.render(scene);
+		
+		glDisable(GL_BLEND);
 		
 		// ================================================= DOWNSCALE =======================================================
 		
@@ -966,11 +1023,12 @@ public class GlobalRenderer {
 		glViewport(0, 0, w / 2, h / 2);
 		
 		progManager.p3f2f_texture.use();
+		modelMatrix.translate(2.0f / w, 4.0f / h, 0.0f);                          // Why 2.0 and 4.0? I have no idea
 		updateMatrix(progManager.p3f2f_texture);
 		combinedBuffer.bindColorTexture(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		
 		// ================================================= DOWNSCALE =======================================================
 		
@@ -981,13 +1039,13 @@ public class GlobalRenderer {
 		
 		progManager.p3f2f_texture.use();
 		modelMatrix.pushMatrix();
-		modelMatrix.translate(1.0f, 1.0f, 0.0f);
+		modelMatrix.translate(1.0f + (2.0f / w), 1.0f + (4.0f / h), 0.0f);
 		modelMatrix.scale(2.0f);
 		updateMatrix(progManager.p3f2f_texture);
 		postBufferA.bindColorTexture(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		modelMatrix.popMatrix();
 		
 		if(nextTick) {
@@ -1004,9 +1062,9 @@ public class GlobalRenderer {
 			modelMatrix.scale(2.0f);
 			updateMatrix(progManager.p3f2f_texture);
 			postBufferB.bindColorTexture(0);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			modelMatrix.popMatrix();
 			
 			// ========================================= DOWNSCALE TO SINGLE PIXEL ==============================================
@@ -1019,7 +1077,7 @@ public class GlobalRenderer {
 			progManager.post_downscale8th.use();
 			progManager.post_downscale8th_textureSize.set2f(w, h);
 			postBufferC.bindColorTexture(0);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			nextTick = false;
 		}
@@ -1088,7 +1146,8 @@ public class GlobalRenderer {
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
-		//this.cubemapGenerator.bindIrradianceTexture(0);
+		//this.cloudMapGenerator.bindTextureA(0);
+		//this.cubemapGenerator.bindIrradianceTextureA(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		// ================================================= RENDER FXAA =======================================================
@@ -1147,10 +1206,11 @@ public class GlobalRenderer {
 		if(altitude < -1000.0f) altitude = -1000.0f;
 		progManager.sky_altitude.set1f(altitude);
 
+		this.cloudMapGenerator.bindTextureB(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		this.cloudMapGenerator.bindTextureA(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		this.cloudMapGenerator.bindTextureB(1);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
 		
 		if(lowPolySky) {
@@ -1224,16 +1284,20 @@ public class GlobalRenderer {
 			nextTick = true;
 			
 			sceneBrightness += 0.1f;
-			sceneBrightness *= 3.0f;
+			sceneBrightness *= 4.0f;
 			
 			targetExposure = 1.0f / sceneBrightness;
 			
-			if(targetExposure < 0.3f) targetExposure = 0.3f;
+			if(targetExposure < 0.1f) targetExposure = 0.1f;
 			
-			exposure += (targetExposure - exposure) * 0.03f;
+			exposure += (targetExposure - exposure) * 0.05f;
 		}
 		
 		cloudMapGenerator.renderCloudMap(GameClient.instance.getScene());
+		
+		if(totalTicks % 20 == 0) {
+			cubemapGenerator.updateIrradianceTexture();
+		}
 		
 		++totalTicks;
 	}
@@ -1354,6 +1418,9 @@ public class GlobalRenderer {
 		this.cloudMapGenerator.destroy();
 		this.cubemapGenerator.destroy();
 		this.skyDomeSmall.destroyWithBuffers();
+		this.testSphere.destroyWithBuffers();
+		this.lightBulbRenderer.destroy();
+		this.lensFlareRenderer.destroy();
 	}
 
 }

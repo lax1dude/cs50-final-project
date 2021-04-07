@@ -35,7 +35,7 @@ public class GameConfiguration {
 	public static float sunShadowLODDDistance = 640.0f;
 
 	public static boolean enableAmbientOcclusion = true;
-	public static boolean enableVolumetricLighting = true; //expensive
+	public static boolean enableSunlightVolumetric = true; //expensive
 	public static boolean enableBloom = true;
 	public static boolean enableSoftShadows = true;
 	public static boolean cloudsMoveWithPlayer = true;

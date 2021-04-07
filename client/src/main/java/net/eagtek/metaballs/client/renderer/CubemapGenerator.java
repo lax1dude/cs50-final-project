@@ -28,7 +28,9 @@ public class CubemapGenerator {
 	private final int glFramebuffer;
 	private final int glRenderbuffer;
 
-	private final EaglFramebuffer irradianceMap;
+	private final EaglFramebuffer irradianceMapA;
+	private final EaglFramebuffer irradianceMapB;
+	private boolean irradianceB = false;
 	
 	public CubemapGenerator(GlobalRenderer r) {
 		this.renderer = r;
@@ -54,8 +56,19 @@ public class CubemapGenerator {
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, glRenderbuffer);
 
-		this.irradianceMap = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
+		this.irradianceMapA = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
+		this.irradianceMapB = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
+
+		glViewport(0, 0, 32, 32);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		
+		this.irradianceMapA.setSize(32, 32);
+		this.irradianceMapA.bindFramebuffer();
+		glClear(GL_COLOR_BUFFER_BIT);
+		
+		this.irradianceMapB.setSize(32, 32);
+		this.irradianceMapB.bindFramebuffer();
+		glClear(GL_COLOR_BUFFER_BIT);
 	}
 	
 	public void redrawCubemap(RenderScene scene) {
@@ -70,11 +83,20 @@ public class CubemapGenerator {
 			redrawCubemapFace(scene, currentFace++);
 			if(currentFace > 5) currentFace = 0;
 		}
-		
-		this.irradianceMap.setSize(32, 16);
-		this.irradianceMap.bindFramebuffer();
+	}
+	
+	public void updateIrradianceTexture() {
+		if(irradianceB) {
+			this.irradianceMapB.setSize(64, 64);
+			this.irradianceMapB.bindFramebuffer();
+			irradianceB = false;
+		}else {
+			this.irradianceMapA.setSize(64, 64);
+			this.irradianceMapA.bindFramebuffer();
+			irradianceB = true;
+		}
 
-		glViewport(0, 0, 32, 16);
+		glViewport(0, 0, 64, 64);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
@@ -84,8 +106,14 @@ public class CubemapGenerator {
 		renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
 	}
 	
-	public void bindIrradianceTexture(int slot) {
-		this.irradianceMap.bindColorTexture(0, slot);
+	public void bindIrradianceTextureA(int slot) {
+		if(this.irradianceB) this.irradianceMapB.bindColorTexture(0, slot);
+		else this.irradianceMapA.bindColorTexture(0, slot);
+	}
+	
+	public void bindIrradianceTextureB(int slot) {
+		if(this.irradianceB) this.irradianceMapA.bindColorTexture(0, slot);
+		else this.irradianceMapB.bindColorTexture(0, slot);
 	}
 	
 	private void rebindFramebufferAttachment(int face) {
@@ -187,6 +215,8 @@ public class CubemapGenerator {
 		glDeleteTextures(glObject);
 		glDeleteFramebuffers(glFramebuffer);
 		glDeleteRenderbuffers(glRenderbuffer);
+		this.irradianceMapA.destroy();
+		this.irradianceMapB.destroy();
 	}
 
 }

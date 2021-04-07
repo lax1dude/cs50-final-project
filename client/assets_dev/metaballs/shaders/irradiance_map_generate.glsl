@@ -23,8 +23,8 @@ uniform samplerCube cubeMap;
 
 float PI = 3.14159265;
 vec3 dirFromLongAndLat(vec2 longAndLat) {
-	vec2 angles = vec2(longAndLat.x * PI, (longAndLat.y + 1.0) * PI * 0.25);
-	return vec3(sin(angles.x) * sin(angles.y), cos(angles.y), cos(angles.x) * sin(angles.y));
+    vec2 angles = vec2(longAndLat.x * PI, (longAndLat.y + 1.0) * PI * 0.5);
+    return vec3(sin(angles.x) * sin(angles.y), cos(angles.y), cos(angles.x) * sin(angles.y));
 }
 
 vec3 sampl(vec3 dir) {
@@ -51,15 +51,9 @@ vec3 sampl(vec3 dir) {
 }
 
 void main() {
-	if(texInV.x > 0.5) {
-		vec2 texCoord = ((texInV.xy - vec2(0.5, 1.0)) * vec2(2.0, 1.0)) * 2.0 - 1.0;
-		vec3 rayDirection = dirFromLongAndLat(texCoord) * vec3(1.0, -1.0, -1.0);
-		fragOut = sampl(rayDirection);
-	}else {
-		vec2 texCoord = ((texInV.xy) * vec2(2.0, 1.0)) * 2.0 - 1.0;
-		vec3 rayDirection = dirFromLongAndLat(texCoord) * vec3(-1.0, 1.0, 1.0);
-		fragOut = sampl(rayDirection);
-	}
+	vec2 texCoord = texInV.xy * 2.0 - 1.0;
+	vec3 rayDirection = dirFromLongAndLat(texCoord) * vec3(-1.0, 1.0, 1.0);
+	fragOut = sampl(rayDirection); //texture(cubeMap, rayDirection).rgb;
 }
 
 #endif
