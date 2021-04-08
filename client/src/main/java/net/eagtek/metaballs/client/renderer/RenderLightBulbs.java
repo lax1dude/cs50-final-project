@@ -4,6 +4,7 @@ import static org.lwjgl.opengles.GLES31.*;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import org.joml.Matrix4f;
@@ -28,6 +29,8 @@ public class RenderLightBulbs {
 	private static final int instanceBufferSize = 10000;
 	
 	private final ByteBuffer uploadBuffer = MemoryUtil.memAlloc(instanceBufferSize * 24);
+	
+	public final ArrayList<LightData> lensFlaresInFrustum = new ArrayList();
 	
 	public RenderLightBulbs(GlobalRenderer renderer) {
 		this.renderer = renderer;
@@ -97,7 +100,7 @@ public class RenderLightBulbs {
 	
 	public void renderLightBulbs(RenderScene scene) {
 		int renderedLights = 0;
-		
+		lensFlaresInFrustum.clear();
 		Iterator<LightData> lightRenderers = scene.lightRenderers.iterator();
 		while(lightRenderers.hasNext()) {
 			if(renderedLights >= instanceBufferSize) {
@@ -112,6 +115,7 @@ public class RenderLightBulbs {
 			float z = (float)(r.lightZ - renderer.renderPosZ);
 			if(r.drawPoint > 0.0f && renderer.viewProjFustrum.testPoint(x, y, z)) {
 				putLight(r, renderer.viewProjMatrix);
+				lensFlaresInFrustum.add(r);
 				++renderedLights;
 			}
 		}
@@ -130,6 +134,7 @@ public class RenderLightBulbs {
 			float z = (float)(r.lightZ - renderer.renderPosZ);
 			if(r.drawPoint > 0.0f && renderer.viewProjFustrum.testPoint(x, y, z)) {
 				putLight(r, renderer.viewProjMatrix);
+				lensFlaresInFrustum.add(r);
 				++renderedLights;
 			}
 		}

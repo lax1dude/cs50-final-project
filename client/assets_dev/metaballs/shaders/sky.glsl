@@ -50,34 +50,53 @@ uniform float sunSize;
 
 uniform sampler2D cloudTextureA;
 uniform sampler2D cloudTextureB;
+uniform sampler2D starsTexture;
 
 uniform float cloudTextureBlend;
 
 float invPI = 0.318309886;
-vec2 clipSpaceFromDir(vec3 dir) {
+vec2 clipSpaceFromDir180(vec3 dir) {
 	return vec2(
 		atan(dir.x, dir.z) * invPI,
         acos(dir.y) * invPI * 4.0 - 1.0
 	);
+}
+vec2 clipSpaceFromDir360(vec3 dir) {
+    return vec2(
+        atan(-dir.x, dir.z) * invPI,
+        acos(dir.y) * invPI * 2.0 - 1.0
+    );
 }
 
 void main() {
 	vec3 normal = normalize(normalv);
 	
 	float sunBrightness = max(dot(normal, -sunDirection), 0.0);
+	vec2 cloudMapPos = clipSpaceFromDir180(-normal) * 0.5 + 0.5;
 	
-	vec2 cloudMapPos = clipSpaceFromDir(-normal) * 0.5 + 0.5;
+	float riseFac = clamp((sunDirection.y + 0.1), 0.1, 1.0);
+	riseFac *= riseFac;
 	
-	float cloudMapSample = mix(texture(cloudTextureA, cloudMapPos).r, texture(cloudTextureB, cloudMapPos).r, cloudTextureBlend) * max(-normal.y, 0.0) * 0.001 * pow(clamp((sunDirection.y + 0.1), 0.0, 1.0), 2.0);
+	float cloudMapSample = mix(texture(cloudTextureA, cloudMapPos).r, texture(cloudTextureB, cloudMapPos).r, cloudTextureBlend) * max(-normal.y, 0.0) * 0.001 * riseFac;
 	
 	float darkness = pow(cloudMapSample * 100.0, 4.0) * 30.0;
 	darkness /= darkness + 2.0;
 	darkness = clamp(darkness, 0.0, 1.0);
 	
+	vec3 vecc1 = -sunDirection;
+	vec3 vecc2 = vec3(0.0, 0.0, -1.0);
+	vec3 tangent = normalize(vecc1 - vecc2 * dot(vecc1, vecc2));
+	vec3 bitangent = cross(vecc2, tangent);
+	mat3 TBN = mat3(tangent, bitangent, vecc2);
+	
+	riseFac = clamp(-sunDirection.y * 5.0, 0.0, 1.0);
+	riseFac *= riseFac;
+	
     fragOut = mix(
 		colorv +
 		sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0)) +
-		cloudColor * (cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)),
+		cloudColor * (cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)) +
+		pow(texture(starsTexture, clipSpaceFromDir360(TBN * -normal) * 0.5 + 0.5).rgb, vec3(4.0)) * 0.5 * riseFac,
 		vec3(0.0),
 		darkness * 0.9
 	);

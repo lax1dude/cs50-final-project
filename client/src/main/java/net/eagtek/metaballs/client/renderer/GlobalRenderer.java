@@ -57,6 +57,7 @@ public class GlobalRenderer {
 	private final EaglImage2D bananaTexture;
 	//private final EaglImage2D dirtTexture;
 	private final EaglImage2D testModelTexture;
+	private final EaglImage2D starsTexture;
 	
 	private ModelObjectRenderer testModelRenderer = null;
 	private ModelObjectRenderer longArmsRenderer = null;
@@ -122,6 +123,14 @@ public class GlobalRenderer {
 	public int displayW;
 	public int displayH;
 	
+	public final int[] queryObjectPool = new int[2048];
+	private int queryObject = 0;
+	
+	public int getQuery() {
+		if(queryObject >= queryObjectPool.length) queryObject = 0;
+		return queryObjectPool[queryObject];
+	}
+	
 	public int getFramerate() {
 		return prevFramesPassed;
 	}
@@ -157,6 +166,7 @@ public class GlobalRenderer {
 		testModelTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/longarms_texture.png"));
 		bananaTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/banana_texture.png"));
 		//dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
+		starsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/stars.jpg")).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR);
 		
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
@@ -260,6 +270,8 @@ public class GlobalRenderer {
 		cubemapGenerator = new CubemapGenerator(this);
 		lightBulbRenderer = new RenderLightBulbs(this);
 		lensFlareRenderer = new RenderLensFlares(this);
+		
+		//glGenQueries(queryObjectPool);
 	}
 
 	public static final Vector3f up = new Vector3f(0.0f, 0.0f, 1.0f);
@@ -279,7 +291,7 @@ public class GlobalRenderer {
 		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f).normalize();
 		//sd.rotateZ(20.0f * MathUtil.toRadians);
-		sd.rotateZ((100.0f - ((client.totalTicksF * 0.02f) % 180.0f)) * MathUtil.toRadians);
+		sd.rotateZ(20.0f * MathUtil.toRadians);
 		sd.rotateY(20.0f * MathUtil.toRadians);
 		
 		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
@@ -885,6 +897,8 @@ public class GlobalRenderer {
 		
 		glDepthMask(true);
 		glDisable(GL_BLEND);
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_CULL_FACE);
 		
 		if(GameConfiguration.enableSunlightVolumetric && scene.lightShafts) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
@@ -915,8 +929,6 @@ public class GlobalRenderer {
 			glViewport(0, 0, w / 2, h / 2);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
-			glDisable(GL_DEPTH_TEST);
-			glDisable(GL_CULL_FACE);
 			
 			progManager.light_shaft_generate.use();
 			progManager.light_shaft_generate_shadowMatrixA.setMatrix4f(sunShadowProjViewA);
@@ -1016,6 +1028,13 @@ public class GlobalRenderer {
 		glViewport(0, 0, w, h);
 		
 		lensFlareRenderer.render(scene);
+		
+		combinedBuffer.setDepthAttached(false);
+		lightRenderers = lightBulbRenderer.lensFlaresInFrustum.iterator();
+		while(lightRenderers.hasNext()) {
+			lensFlareRenderer.renderLightFlare(lightRenderers.next());
+		}
+		combinedBuffer.setDepthAttached(true);
 		
 		glDisable(GL_BLEND);
 		
@@ -1208,7 +1227,7 @@ public class GlobalRenderer {
 		float scale = 10.0f;
 		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 		
-		kelvin = scene.sunKelvin + 2000;
+		kelvin = (int) lerp(scene.sunKelvin + 2000, 6000, Math.max(1.0f - scene.sunDirection.y, 0.0f));
 		progManager.sky_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 		
 		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
@@ -1224,6 +1243,7 @@ public class GlobalRenderer {
 		this.cloudMapGenerator.bindTextureA(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		this.cloudMapGenerator.bindTextureB(1);
+		this.starsTexture.bind(2);
 		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
 		
 		if(lowPolySky) {
@@ -1404,7 +1424,7 @@ public class GlobalRenderer {
 	}
 	*/
 	
-	public void destory() {
+	public void destroy() {
 		this.quadArray.destroyWithBuffers();
 		this.combinedBuffer.destroy();
 		this.gBuffer.destroy();
@@ -1435,6 +1455,8 @@ public class GlobalRenderer {
 		this.testSphere.destroyWithBuffers();
 		this.lightBulbRenderer.destroy();
 		this.lensFlareRenderer.destroy();
+		//glDeleteQueries(queryObjectPool);
+		this.starsTexture.destroy();
 	}
 
 }

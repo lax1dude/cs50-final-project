@@ -181,6 +181,16 @@ public class ProgramManager {
 	public EaglUniform lens_flare_occlusion_matrix_vp;
 	public EaglUniform lens_flare_occlusion_cloudTextureBlend;
 	
+	public EaglProgram lens_flare_single;
+	public EaglUniform lens_flare_single_position;
+	public EaglUniform lens_flare_single_size;
+	public EaglUniform lens_flare_single_color;
+	public EaglUniform lens_flare_single_flareTextureSelection;
+	
+	public EaglProgram lens_flare_single_occlusion;
+	public EaglUniform lens_flare_single_occlusion_position;
+	public EaglUniform lens_flare_single_occlusion_size;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -451,6 +461,7 @@ public class ProgramManager {
 		this.sky = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		sky.getUniform("cloudTextureA").set1i(0);
 		sky.getUniform("cloudTextureB").set1i(1);
+		sky.getUniform("starsTexture").set1i(2);
 
 		sky_sunColor = sky.getUniform("sunColor");
 		sky_cloudColor = sky.getUniform("cloudColor");
@@ -579,6 +590,26 @@ public class ProgramManager {
 			lens_flare_occlusion.getUniform("sampleNoise["+i+"]").set4f(x, y, z, len);
 		}
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/lens_flare_single.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "lens_flare_single.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "lens_flare_single.fsh");
+		this.lens_flare_single = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		lens_flare_single.getUniform("flareTexture").set1i(0);
+		lens_flare_single.getUniform("depthTexture").set1i(1);
+		lens_flare_single_position = lens_flare_single.getUniform("position");
+		lens_flare_single_size = lens_flare_single.getUniform("size");
+		lens_flare_single_color = lens_flare_single.getUniform("color");
+		lens_flare_single_flareTextureSelection = lens_flare_single.getUniform("flareTextureSelection");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/lens_flare_single_occlusion.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "lens_flare_single_occlusion.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "lens_flare_single_occlusion.fsh");
+		this.lens_flare_single_occlusion = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		lens_flare_single_occlusion_position = lens_flare_single_occlusion.getUniform("position");
+		lens_flare_single_occlusion_size = lens_flare_single_occlusion.getUniform("size");
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -623,6 +654,8 @@ public class ProgramManager {
 		light_bulb_renderer.destroy();
 		lens_flare.destroy();
 		lens_flare_occlusion.destroy();
+		lens_flare_single.destroy();
+		lens_flare_single_occlusion.destroy();
 	}
 
 }

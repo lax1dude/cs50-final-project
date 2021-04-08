@@ -2,11 +2,13 @@ package net.eagtek.metaballs.client.renderer;
 
 import static org.lwjgl.opengles.GLES31.*;
 
+import java.nio.FloatBuffer;
 import java.util.Random;
 
 import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
+import org.lwjgl.system.MemoryStack;
 
 import net.eagtek.eagl.EaglFramebuffer;
 import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
@@ -32,6 +34,8 @@ public class RenderLensFlares {
 	private final EaglImage2D lensFlareTextures;
 	private final EaglFramebuffer sunOcclusionTest;
 	
+	private final EaglVertexArray conditionalFlare;
+	
 	private static final float textureW = 512;
 	private static final float textureH = 256;
 
@@ -41,6 +45,7 @@ public class RenderLensFlares {
 	public RenderLensFlares(GlobalRenderer g) {
 		this.renderer = g;
 		this.tessellator = new EaglTessellator(20, 1000, 4000);
+		
 		this.vertexBuffer = new EaglVertexBuffer();
 		this.indexBuffer = new EaglIndexBuffer(GLDataType.SHORT_U);
 		this.vertexArray = new EaglVertexArray(
@@ -52,6 +57,28 @@ public class RenderLensFlares {
 		);
 		this.lensFlareTextures = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/lensflares.png")).generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR);
 		this.sunOcclusionTest = new EaglFramebuffer(DepthBufferType.NONE, GL_R8);
+		
+		EaglVertexBuffer b = new EaglVertexBuffer();
+		this.conditionalFlare = new EaglVertexArray(
+			new EaglVertexBuffer[] { b }, new EaglVertexArray.VertexAttribPointer[] {
+				EaglVertexArray.attrib(0, 0, 2, GLDataType.FLOAT, false, 8, 0)
+			}
+		);
+		
+		try(MemoryStack s = MemoryStack.stackPush()) {
+			FloatBuffer f = s.mallocFloat(2 * 6);
+			f.put(new float[] {
+					-1.0f, -1.0f,
+					 1.0f, -1.0f,
+					 1.0f,  1.0f,
+					-1.0f,  1.0f,
+					-1.0f, -1.0f,
+					 1.0f,  1.0f
+			});
+			f.flip();
+			glBindBuffer(GL_ARRAY_BUFFER, b.glObject);
+			glBufferData(GL_ARRAY_BUFFER, f, GL_STATIC_DRAW);
+		}
 	}
 	
 	/**
@@ -91,6 +118,8 @@ public class RenderLensFlares {
 		pushQuad(sunClipX - sunClipX * dist, sunClipY - sunClipY * dist, size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, r * sunR, g * sunG, b * sunB, a, rotation + exposureModifier * 120.0f);
 	}
 	
+	private final Random rand = new Random();
+	
 	public void render(RenderScene scene) {
 		
 		float intensityF = (float)Math.sqrt(Math.max(scene.sunDirection.y + 0.1f, 0.0f));
@@ -107,7 +136,7 @@ public class RenderLensFlares {
 			transformationVector.z /= transformationVector.w;
 			
 			if(transformationVector.z >= -1.0f && transformationVector.z < 1.0f) {
-				Random rand = new Random("dick".hashCode());
+				rand.setSeed("dick".hashCode());
 				
 				float x = sunClipX = (transformationVector.x) / xPixelsInv;
 				float y = sunClipY = (transformationVector.y) / yPixelsInv;
@@ -119,7 +148,7 @@ public class RenderLensFlares {
 				float g = sunG = renderer.colorTemperatures.getLinearG(kelvin);
 				float b = sunB = renderer.colorTemperatures.getLinearB(kelvin);
 				
-				pushAlignedQuad(x, y, 0.5f, 0.5f, 384, 128, 128, 128, r, g, b, 1.0f, 0.0f);
+				pushAlignedQuad(x, y, 0.5f, 0.5f, 384, 128, 127, 127, r, g, b, 1.0f, 0.0f);
 				
 				float streakIntensity = 0.2f;
 				
@@ -249,6 +278,32 @@ public class RenderLensFlares {
 		this.vertexArray.destroyWithBuffers();
 		this.lensFlareTextures.destroy();
 		this.sunOcclusionTest.destroy();
+		this.conditionalFlare.destroy();
+	}
+	
+	private static final Vector4f vec = new Vector4f();
+	
+	public void renderLightFlare(LightData r) {
+		vec.x = (float)(r.lightX - renderer.renderPosX);
+		vec.y = (float)(r.lightY - renderer.renderPosY);
+		vec.z = (float)(r.lightZ - renderer.renderPosZ);
+		vec.w = 0.0f;
+		float dist = vec.length();
+		if(dist < 100.0f) {
+			vec.w = 1.0f;
+			renderer.viewProjMatrix.transform(vec);
+			vec.x /= vec.w;
+			vec.y /= vec.w;
+			vec.z /= vec.w;
+			renderer.progManager.lens_flare_single.use();
+			renderer.progManager.lens_flare_single_color.set3f(r.lightR * 0.2f * r.lensFlare, r.lightG * 0.5f * r.lensFlare, r.lightB * r.lensFlare);
+			renderer.progManager.lens_flare_single_position.set3f(vec.x, vec.y, vec.z);
+			renderer.progManager.lens_flare_single_size.set2f(r.drawPoint / (float)Math.min(Math.sqrt(dist * 0.1d), 15.0d) / renderer.displayW * 5.0f, 1.5f);
+			renderer.progManager.lens_flare_single_flareTextureSelection.set1f(r.hashCode() % 2);
+			lensFlareTextures.bind(0);
+			renderer.gBuffer.bindDepthTexture(1);
+			conditionalFlare.draw(GL_TRIANGLES, 0, 6);
+		}
 	}
 
 }

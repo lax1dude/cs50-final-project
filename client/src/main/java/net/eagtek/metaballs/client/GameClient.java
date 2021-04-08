@@ -254,7 +254,7 @@ public class GameClient {
 	}
 	
 	private void cleanup() {
-		globalRenderer.destory();
+		globalRenderer.destroy();
 		context.destroy();
 	}
 

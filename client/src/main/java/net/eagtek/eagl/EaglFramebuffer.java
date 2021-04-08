@@ -117,6 +117,16 @@ public class EaglFramebuffer {
 		return this;
 	}
 	
+	public void setDepthAttached(boolean attached) {
+		if(depthBuffer.depthBufferType != DepthBufferType.NONE && depthBuffer != null) {
+			if(depthBuffer.depthBufferType.rbo){
+				glFramebufferRenderbuffer(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_RENDERBUFFER, attached ? depthBuffer.glObject : 0);
+			}else {
+				glFramebufferTexture2D(GL_FRAMEBUFFER, depthBuffer.depthBufferType.attachment, GL_TEXTURE_2D, attached ? depthBuffer.glObject : 0, 0);
+			}
+		}
+	}
+	
 	public EaglFramebuffer setSize(int w, int h, int samples) {
 		if(this.w != w || this.h != h || this.samples != samples) {
 			
