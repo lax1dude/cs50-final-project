@@ -8,8 +8,6 @@ layout(location = 2) in vec4 colorIn;
 out vec2 v_tex;
 out vec3 v_color;
 
-uniform vec2 aspectRatio;
-
 void main() {
 	v_tex = texIn;
 	v_color = colorIn.rgb;
@@ -26,14 +24,14 @@ in vec3 v_color;
 uniform sampler2D flareTexture;
 uniform float intensity;
 
-uniform vec2 sunTexCoord;
-uniform sampler2D depthTexture;
+uniform sampler2D sunOcclusionTexture;
 
 layout(location = 0) out vec3 colorOut;
 
 void main() {
-	if(texture(depthTexture, sunTexCoord).r == 0.0) {
-		colorOut = pow(texture(flareTexture, v_tex).rgb, vec3(2.2)) * intensity;
+	float occlud = texture(sunOcclusionTexture, vec2(0.0)).r;
+	if(occlud > 0.0) {
+		colorOut = max(pow(texture(flareTexture, v_tex).rgb, vec3(2.2)) * intensity * v_color * occlud, vec3(0.0));
 	}else {
 		colorOut = vec3(0.0);
 	}

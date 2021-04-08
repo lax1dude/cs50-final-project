@@ -21,7 +21,7 @@ void main() {
     gl_Position = matrix_mvp * vec4(posIn, 1.0);
 	colorv = atmosphere(
         -normalv,                       // normalized ray direction
-        vec3(0,6373e3 + altitude * 30.0,0),// ray origin
+        vec3(0,6373e3,0),               // ray origin
         sunDirection,                   // position of the sun
         100.0,                          // intensity of the sun
         6371e3,                         // radius of the planet in meters
@@ -44,6 +44,7 @@ in vec3 normalv;
 layout(location = 0) out vec3 fragOut;
 	
 uniform vec3 sunColor;
+uniform vec3 cloudColor;
 uniform lowp vec3 sunDirection;
 uniform float sunSize;
 
@@ -74,7 +75,9 @@ void main() {
 	darkness = clamp(darkness, 0.0, 1.0);
 	
     fragOut = mix(
-		colorv + sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0) + cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)),
+		colorv +
+		sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0)) +
+		cloudColor * (cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)),
 		vec3(0.0),
 		darkness * 0.9
 	);

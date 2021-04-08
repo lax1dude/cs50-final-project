@@ -98,8 +98,8 @@ public class GlobalRenderer {
 	public final RenderLightBulbs lightBulbRenderer;
 	public final RenderLensFlares lensFlareRenderer;
 	
-	private float exposure = 2.0f;
-	private float targetExposure = 2.0f;
+	public float exposure = 2.0f;
+	public float targetExposure = 2.0f;
 	
 	private long secondTimer = 0l;
 	private int framesPassed = 0;
@@ -278,7 +278,7 @@ public class GlobalRenderer {
 		
 		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f).normalize();
-		//sd.rotateZ(120.0f * MathUtil.toRadians);
+		//sd.rotateZ(20.0f * MathUtil.toRadians);
 		sd.rotateZ((100.0f - ((client.totalTicksF * 0.02f) % 180.0f)) * MathUtil.toRadians);
 		sd.rotateY(20.0f * MathUtil.toRadians);
 		
@@ -289,7 +289,7 @@ public class GlobalRenderer {
 		
 		scene.sunSize = 0.15f;
 		
-		scene.sunKelvin = (int) lerp(1500.0f, 6000.0f, Math.min(timeOfDay, 1.0f));
+		scene.sunKelvin = (int) lerp(1500.0f, 3500.0f, Math.min(timeOfDay, 1.0f));
 		
 		scene.fogKelvin = 6000;
 		
@@ -1000,13 +1000,22 @@ public class GlobalRenderer {
 		glDisable(GL_STENCIL_TEST);
 		
 		// ============================================ RENDER LENS FLARES ==================================================
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_ONE, GL_ONE);
-
+		
 		lensFlareRenderer.xPixelsInv = 1.0f;
 		lensFlareRenderer.yPixelsInv = (float)w / (float)h;
-		//lensFlareRenderer.render(scene);
+		
+		gBuffer.bindDepthTexture(0);
+		cloudMapGenerator.bindTextureA(1);
+		cloudMapGenerator.bindTextureB(2);
+		lensFlareRenderer.processOcclusion(scene);
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		
+		combinedBuffer.bindFramebuffer();
+		glViewport(0, 0, w, h);
+		
+		lensFlareRenderer.render(scene);
 		
 		glDisable(GL_BLEND);
 		
@@ -1023,7 +1032,7 @@ public class GlobalRenderer {
 		glViewport(0, 0, w / 2, h / 2);
 		
 		progManager.p3f2f_texture.use();
-		modelMatrix.translate(2.0f / w, 4.0f / h, 0.0f);                          // Why 2.0 and 4.0? I have no idea
+		modelMatrix.translate(1.0f / w, 1.0f / h, 0.0f);
 		updateMatrix(progManager.p3f2f_texture);
 		combinedBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1039,7 +1048,7 @@ public class GlobalRenderer {
 		
 		progManager.p3f2f_texture.use();
 		modelMatrix.pushMatrix();
-		modelMatrix.translate(1.0f + (2.0f / w), 1.0f + (4.0f / h), 0.0f);
+		modelMatrix.translate(1.0f + (2.0f / w), 1.0f + (2.0f / h), 0.0f);
 		modelMatrix.scale(2.0f);
 		updateMatrix(progManager.p3f2f_texture);
 		postBufferA.bindColorTexture(0);
@@ -1092,7 +1101,7 @@ public class GlobalRenderer {
 			glClear(GL_COLOR_BUFFER_BIT);
 	
 			progManager.post_bloom_h.use();
-			progManager.post_bloom_h_screenSizeInv.set2f(0.5f / w, 0.5f / h);
+			progManager.post_bloom_h_screenSizeInv.set2f(1.0f / w, 1.0f / h);
 			postBufferB.bindColorTexture(0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			
@@ -1105,7 +1114,7 @@ public class GlobalRenderer {
 			glClear(GL_COLOR_BUFFER_BIT);
 			
 			progManager.post_bloom_v.use();
-			progManager.post_bloom_v_screenSizeInv.set2f(0.5f / w, 0.5f / h);
+			progManager.post_bloom_v_screenSizeInv.set2f(1.0f / w, 1.0f / h);
 			postBufferA.bindColorTexture(0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 		}else {
@@ -1153,7 +1162,7 @@ public class GlobalRenderer {
 		// ================================================= RENDER FXAA =======================================================
 		
 		GLStateManager.bindFramebuffer(0);
-		glDepthMask(true);
+		//glDepthMask(true);
 
 		glViewport(0, 0, w, h);
 		glDisable(GL_DEPTH_TEST);
@@ -1186,6 +1195,7 @@ public class GlobalRenderer {
 	}
 	
 	public void renderSkyDome(RenderScene scene, boolean lowPolySky) {
+		
 		glEnable(GL_STENCIL_TEST);
 		glStencilMask(0x0);
 		glStencilFunc(GL_EQUAL, 0, 0xFF);
@@ -1197,6 +1207,9 @@ public class GlobalRenderer {
 		int kelvin = scene.sunKelvin;
 		float scale = 10.0f;
 		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+		
+		kelvin = scene.sunKelvin + 2000;
+		progManager.sky_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 		
 		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 		progManager.sky_sunSize.set1f(scene.sunSize);
@@ -1220,6 +1233,7 @@ public class GlobalRenderer {
 		}
 		
 		glDisable(GL_STENCIL_TEST);
+		
 	}
 
 	public void updateMatrix(EaglProgram prog) {

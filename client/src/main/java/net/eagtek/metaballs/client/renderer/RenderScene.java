@@ -23,7 +23,7 @@ public class RenderScene {
 	public float sunSize = 0.1f;
 	public float fogDensity = 0.005f;
 	public boolean lightShafts = true;
-	public float cloudDensity = 0.15f;
+	public float cloudDensity = 0.1f;
 
 	public float windX = 0.01f;
 	public float windZ = 0.004f;

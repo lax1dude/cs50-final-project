@@ -122,6 +122,7 @@ public class ProgramManager {
 	
 	public EaglProgram sky;
 	public EaglUniform sky_sunColor;
+	public EaglUniform sky_cloudColor;
 	public EaglUniform sky_sunDirection;
 	public EaglUniform sky_sunSize;
 	public EaglUniform sky_altitude;
@@ -174,7 +175,11 @@ public class ProgramManager {
 	
 	public EaglProgram lens_flare;
 	public EaglUniform lens_flare_intensity;
-	public EaglUniform lens_flare_sunTexCoord;
+	
+	public EaglProgram lens_flare_occlusion;
+	public EaglUniform lens_flare_occlusion_sunDirection;
+	public EaglUniform lens_flare_occlusion_matrix_vp;
+	public EaglUniform lens_flare_occlusion_cloudTextureBlend;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -446,8 +451,9 @@ public class ProgramManager {
 		this.sky = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		sky.getUniform("cloudTextureA").set1i(0);
 		sky.getUniform("cloudTextureB").set1i(1);
-		
+
 		sky_sunColor = sky.getUniform("sunColor");
+		sky_cloudColor = sky.getUniform("cloudColor");
 		sky_sunDirection = sky.getUniform("sunDirection");
 		sky_sunSize = sky.getUniform("sunSize");
 		sky_altitude = sky.getUniform("altitude");
@@ -550,9 +556,28 @@ public class ProgramManager {
 		this.lens_flare = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 
 		lens_flare.getUniform("flareTexture").set1i(0);
-		lens_flare.getUniform("depthTexture").set1i(1);
+		lens_flare.getUniform("sunOcclusionTexture").set1i(1);
 		lens_flare_intensity = lens_flare.getUniform("intensity");
-		lens_flare_sunTexCoord = lens_flare.getUniform("sunTexCoord");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/lens_flare_occlusion.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "lens_flare_occlusion.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "lens_flare_occlusion.fsh");
+		this.lens_flare_occlusion = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		lens_flare_occlusion.getUniform("depthTexture").set1i(0);
+		lens_flare_occlusion.getUniform("cloudTextureA").set1i(1);
+		lens_flare_occlusion.getUniform("cloudTextureB").set1i(2);
+		lens_flare_occlusion_sunDirection = lens_flare_occlusion.getUniform("sunDirection");
+		lens_flare_occlusion_matrix_vp = lens_flare_occlusion.getUniform("matrix_vp");
+		lens_flare_occlusion_cloudTextureBlend = lens_flare_occlusion.getUniform("cloudTextureBlend");
+		
+		for(int i = 0; i < 32; ++i) {
+			float x = (float) r.nextGaussian();
+			float y = (float) r.nextGaussian();
+			float z = (float) r.nextGaussian();
+			float len = (float)Math.sqrt(x*x + y*y + z*z);
+			lens_flare_occlusion.getUniform("sampleNoise["+i+"]").set4f(x, y, z, len);
+		}
 		
 	}
 	
@@ -597,6 +622,7 @@ public class ProgramManager {
 		cubemap_3f_4b_uniform.destroy();
 		light_bulb_renderer.destroy();
 		lens_flare.destroy();
+		lens_flare_occlusion.destroy();
 	}
 
 }
