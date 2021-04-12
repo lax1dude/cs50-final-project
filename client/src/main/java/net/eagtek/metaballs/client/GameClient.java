@@ -249,6 +249,7 @@ public class GameClient {
 		cameraPitchAccel *= rdecell;
 		cameraYawAccel *= rdecell;
 		
+		scene.time += 1;
 		globalRenderer.tick();
 		
 	}

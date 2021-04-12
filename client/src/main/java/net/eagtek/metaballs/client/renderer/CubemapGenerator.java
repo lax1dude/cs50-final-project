@@ -17,7 +17,7 @@ import net.eagtek.eagl.GLStateManager;
 import net.eagtek.metaballs.MathUtil;
 import net.eagtek.metaballs.client.GameConfiguration;
 
-public class CubemapGenerator {
+class CubemapGenerator {
 	
 	public final GlobalRenderer renderer;
 	
@@ -157,7 +157,7 @@ public class CubemapGenerator {
 			break;
 		}
 		
-		renderer.projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(90.0f * MathUtil.toRadians, 1.0f, 0.1f, GameConfiguration.farPlane / 4.0f);
+		renderer.projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(90.0f * MathUtil.toRadians, 1.0f, 0.1f, GameConfiguration.farPlane / 8.0f);
 		renderer.cameraMatrix.identity()
 		.rotate(-pitch * MathUtil.toRadians, 1.0f, 0.0f, 0.0f)
 		.rotate(-yaw * MathUtil.toRadians, 0.0f, 1.0f, 0.0f);

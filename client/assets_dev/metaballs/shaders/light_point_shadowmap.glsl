@@ -32,7 +32,7 @@ uniform float size;
 uniform float shadowMapIndex;
 
 uniform sampler2D shadowMap;
-uniform mat4 shadowMatrix;
+uniform highp mat4 shadowMatrix;
 
 void main() {
 	vec4 diffuseV;

@@ -32,7 +32,7 @@ uniform float emission;
 uniform float radiusF;
 uniform float size;
 
-uniform mat4 shadowMatrix;
+uniform highp mat4 shadowMatrix;
 uniform float shadowMapIndex;
 
 uniform vec2 screenSize;

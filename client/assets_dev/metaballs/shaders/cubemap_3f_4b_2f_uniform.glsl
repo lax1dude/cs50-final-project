@@ -35,9 +35,6 @@ layout(location = 0) out vec3 diffuse;
 
 uniform sampler2D tex;
 
-uniform sampler2D shadowMap;
-uniform mat4 shadowMatrix;
-
 uniform vec3 sunDirection;
 uniform vec3 sunRGB;
 
@@ -51,8 +48,7 @@ void main() {
 		pow(texture(tex, v_texCoord).rgb, vec3(2.2)),
 		normalize(v_normal * 2.0 - 1.0),
 		v_pos, sunDirection, sunRGB,
-		vec4(metallic, roughness, specular, emission),
-		shadowMap, shadowMatrix
+		vec4(metallic, roughness, specular, emission)
 	);
 }
 

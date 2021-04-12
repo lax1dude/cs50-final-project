@@ -12,21 +12,30 @@ public class RenderScene {
 	public final LinkedHashSet<ParticleField> particleRenderers = new LinkedHashSet();
 	public final LinkedHashSet<WaterRenderer> waterRenderers = new LinkedHashSet();
 	
-	public boolean enableSun = true;
-	public Vector3f sunDirection = new Vector3f();
+	//package cache variables
+	Vector3f sunDirection = new Vector3f();
+	Vector3f moonDirection = new Vector3f();
 
-	public int sunKelvin = 3500;
-	public int fogKelvin = 6000;
+	int sunKelvin = 3500;
+	int fogKelvin = 6000;
+	int moonKelvin = 7000;
+	float moonBrightness = 2.0f;
+
+	float sunBrightness = 100.0f;
+	float skyBrightness = 1.0f;
 	
-	public float sunBrightness = 100.0f;
-	public float skyBrightness = 1.0f;
+	public float sunBrightnessFac = 1.0f;
+	public float skyBrightnessFac = 1.0f;
 	public float sunSize = 0.1f;
 	public float fogDensity = 0.005f;
 	public boolean lightShafts = true;
+	public boolean enableSun = true;
 	public float cloudDensity = 0.1f;
 
 	public float windX = 0.01f;
 	public float windZ = 0.004f;
+	
+	public int time = 0;
 	
 	public RenderScene() {
 		

@@ -3,7 +3,6 @@ package net.eagtek.metaballs.client.renderer;
 import static org.lwjgl.opengles.GLES31.*;
 
 import java.io.InputStream;
-import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -58,6 +57,7 @@ public class GlobalRenderer {
 	//private final EaglImage2D dirtTexture;
 	private final EaglImage2D testModelTexture;
 	private final EaglImage2D starsTexture;
+	private final EaglImage2D moonsTexture;
 	
 	private ModelObjectRenderer testModelRenderer = null;
 	private ModelObjectRenderer longArmsRenderer = null;
@@ -167,6 +167,7 @@ public class GlobalRenderer {
 		bananaTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/banana_texture.png"));
 		//dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
 		starsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/stars.jpg")).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR);
+		moonsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/moons.jpg")).filter(GL_LINEAR, GL_LINEAR);
 		
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
@@ -289,15 +290,20 @@ public class GlobalRenderer {
 		renderPosZ = client.prevRenderZ + (client.renderZ - client.prevRenderZ) * client.partialTicks;
 		
 		Vector3f sd = scene.sunDirection;
-		sd.set(0.0f, 1.0f, 0.0f).normalize();
+		sd.set(0.0f, 1.0f, 0.0f);
 		//sd.rotateZ(20.0f * MathUtil.toRadians);
-		sd.rotateZ(20.0f * MathUtil.toRadians);
+		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
 		sd.rotateY(20.0f * MathUtil.toRadians);
+		
+		sd = scene.moonDirection;
+		sd.set(0.0f, 1.0f, 0.0f);
+		//sd.rotateZ(20.0f * MathUtil.toRadians);
+		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
 		
 		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
 		
-		scene.skyBrightness = timeOfDay * 2.0f;
-		scene.sunBrightness = 200.0f;
+		scene.skyBrightness = scene.enableSun ? timeOfDay * 2.0f : 0.0f;
+		scene.sunBrightness = scene.enableSun ? 200.0f : 0.0f;
 		
 		scene.sunSize = 0.15f;
 		
@@ -373,6 +379,12 @@ public class GlobalRenderer {
 		
 		sunShadowMap.setSize(GameConfiguration.sunShadowMapResolution * 4, GameConfiguration.sunShadowMapResolution);
 		sunShadowMap.bindFramebuffer();
+		
+		glViewport(0, 0, GameConfiguration.sunShadowMapResolution * 4, GameConfiguration.sunShadowMapResolution);
+		
+		glClearDepthf(0.0f);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		
 		glViewport(0, 0, GameConfiguration.sunShadowMapResolution, GameConfiguration.sunShadowMapResolution);
 
 		projMatrix.pushMatrix();
@@ -394,15 +406,14 @@ public class GlobalRenderer {
 		cameraMatrix.mulLocal(projMatrix, viewProjMatrix);
 		sunShadowProjViewA.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
-		
-		glClearDepthf(0.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		
-		objectRenderers = scene.objectRenderers.iterator();
-		while(objectRenderers.hasNext()) {
-			ObjectRenderer r = objectRenderers.next();
-			if(r.shouldRenderPass(RenderPass.SHADOW_A)) {
-				r.renderPass(RenderPass.SHADOW_A, this);
+
+		if(scene.enableSun) {
+			objectRenderers = scene.objectRenderers.iterator();
+			while(objectRenderers.hasNext()) {
+				ObjectRenderer r = objectRenderers.next();
+				if(r.shouldRenderPass(RenderPass.SHADOW_A)) {
+					r.renderPass(RenderPass.SHADOW_A, this);
+				}
 			}
 		}
 		
@@ -420,11 +431,13 @@ public class GlobalRenderer {
 		sunShadowProjViewB.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		objectRenderers = scene.objectRenderers.iterator();
-		while(objectRenderers.hasNext()) {
-			ObjectRenderer r = objectRenderers.next();
-			if(r.shouldRenderPass(RenderPass.SHADOW_B)) {
-				r.renderPass(RenderPass.SHADOW_B, this);
+		if(scene.enableSun) {
+			objectRenderers = scene.objectRenderers.iterator();
+			while(objectRenderers.hasNext()) {
+				ObjectRenderer r = objectRenderers.next();
+				if(r.shouldRenderPass(RenderPass.SHADOW_B)) {
+					r.renderPass(RenderPass.SHADOW_B, this);
+				}
 			}
 		}
 		
@@ -442,11 +455,13 @@ public class GlobalRenderer {
 		sunShadowProjViewC.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		objectRenderers = scene.objectRenderers.iterator();
-		while(objectRenderers.hasNext()) {
-			ObjectRenderer r = objectRenderers.next();
-			if(r.shouldRenderPass(RenderPass.SHADOW_C)) {
-				r.renderPass(RenderPass.SHADOW_C, this);
+		if(scene.enableSun) {
+			objectRenderers = scene.objectRenderers.iterator();
+			while(objectRenderers.hasNext()) {
+				ObjectRenderer r = objectRenderers.next();
+				if(r.shouldRenderPass(RenderPass.SHADOW_C)) {
+					r.renderPass(RenderPass.SHADOW_C, this);
+				}
 			}
 		}
 		
@@ -464,11 +479,13 @@ public class GlobalRenderer {
 		sunShadowProjViewD.set(viewProjMatrix);
 		viewProjFustrum.set(viewProjMatrix);
 		
-		objectRenderers = scene.objectRenderers.iterator();
-		while(objectRenderers.hasNext()) {
-			ObjectRenderer r = objectRenderers.next();
-			if(r.shouldRenderPass(RenderPass.SHADOW_D)) {
-				r.renderPass(RenderPass.SHADOW_D, this);
+		if(scene.enableSun) {
+			objectRenderers = scene.objectRenderers.iterator();
+			while(objectRenderers.hasNext()) {
+				ObjectRenderer r = objectRenderers.next();
+				if(r.shouldRenderPass(RenderPass.SHADOW_D)) {
+					r.renderPass(RenderPass.SHADOW_D, this);
+				}
 			}
 		}
 		
@@ -476,9 +493,6 @@ public class GlobalRenderer {
 
 		lightShadowMap.setSize(GameConfiguration.lightShadowMapResolution * 6, GameConfiguration.lightShadowMapResolution * 6);
 		lightShadowMap.bindFramebuffer();
-		
-		glClearDepthf(0.0f);
-		glClear(GL_DEPTH_BUFFER_BIT);
 		
 		int atlasLocation = 0;
 		
@@ -526,14 +540,38 @@ public class GlobalRenderer {
 					}
 				}
 				if(s.objectsInFrustum.size() > 0 && atlasLocation < 36) {
-					s.atlasLocation = atlasLocation++;
-					int xx = s.atlasLocation % 6;
-					int yy = s.atlasLocation / 6;
-					glViewport(xx * GameConfiguration.lightShadowMapResolution, yy * GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
 					objectRenderers = s.objectsInFrustum.iterator();
-					while(objectRenderers.hasNext()) {
-						ObjectRenderer r = objectRenderers.next();
-						r.renderPass(RenderPass.LIGHT_SHADOW, this);
+					boolean outOfSync = false;
+					if(rand.nextInt(60) == 0) {
+						outOfSync = true;
+					}else {
+						while(objectRenderers.hasNext()) {
+							ObjectRenderer r = objectRenderers.next();
+							int ts = s.objectHashState.get(r.uid);
+							if(ts != r.trackingState || ts == 0) {
+								outOfSync = true;
+								break;
+							}
+						}
+					}
+					if(outOfSync) {
+						s.atlasLocation = atlasLocation++;
+						int xx = s.atlasLocation % 6;
+						int yy = s.atlasLocation / 6;
+						glViewport(xx * GameConfiguration.lightShadowMapResolution, yy * GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
+						
+						glEnable(GL_SCISSOR_TEST);
+						glScissor(xx * GameConfiguration.lightShadowMapResolution, yy * GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
+						glClearDepthf(0.0f);
+						glClear(GL_DEPTH_BUFFER_BIT);
+						glDisable(GL_SCISSOR_TEST);
+						
+						objectRenderers = s.objectsInFrustum.iterator();
+						while(objectRenderers.hasNext()) {
+							ObjectRenderer r = objectRenderers.next();
+							r.renderPass(RenderPass.LIGHT_SHADOW, this);
+							s.objectHashState.put(r.uid, r.trackingState);
+						}
 					}
 				}
 				viewProjFustrum = old;
@@ -566,20 +604,21 @@ public class GlobalRenderer {
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
-		
-		progManager.sunshadow_generate.use();
-		progManager.sunshadow_generate_matrixA.setMatrix4f(sunShadowProjViewA);
-		progManager.sunshadow_generate_matrixB.setMatrix4f(sunShadowProjViewB);
-		progManager.sunshadow_generate_matrixC.setMatrix4f(sunShadowProjViewC);
-		progManager.sunshadow_generate_matrixD.setMatrix4f(sunShadowProjViewD);
-		progManager.sunshadow_generate_randTimer.set1f(client.totalTicksF % 100.0f);
-		progManager.sunshadow_generate_softShadow.set1i(GameConfiguration.enableSoftShadows ? 1 : 0);
-		updateMatrix(progManager.sunshadow_generate);
-		
-		gBuffer.bindColorTexture(2, 0);
-		gBuffer.bindColorTexture(3, 1);
-		sunShadowMap.bindDepthTexture(2);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
+		if(scene.enableSun) {
+			progManager.sunshadow_generate.use();
+			progManager.sunshadow_generate_matrixA.setMatrix4f(sunShadowProjViewA);
+			progManager.sunshadow_generate_matrixB.setMatrix4f(sunShadowProjViewB);
+			progManager.sunshadow_generate_matrixC.setMatrix4f(sunShadowProjViewC);
+			progManager.sunshadow_generate_matrixD.setMatrix4f(sunShadowProjViewD);
+			progManager.sunshadow_generate_randTimer.set1f(client.totalTicksF % 100.0f);
+			progManager.sunshadow_generate_softShadow.set1i(GameConfiguration.enableSoftShadows ? 1 : 0);
+			updateMatrix(progManager.sunshadow_generate);
+			
+			gBuffer.bindColorTexture(2, 0);
+			gBuffer.bindColorTexture(3, 1);
+			sunShadowMap.bindDepthTexture(2);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+		}
 		
 		//glDisable(GL_STENCIL_TEST);
 
@@ -825,19 +864,21 @@ public class GlobalRenderer {
 		glDisable(GL_CULL_FACE);
 		
 		// ================================================= RENDER SUN DIFFUSE AND SPECULAR =======================================================
-		
-		sunShadowBuffer.bindColorTexture(0, 3);
-		progManager.light_sun.use();
-		updateMatrix(progManager.light_sun);
-		
-		Vector3f sunDir = scene.sunDirection;
-		
-		progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
-
-		int kelvin = scene.sunKelvin;
-		progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * 0.1f);
-		
-		quadArray.draw(GL_TRIANGLES, 0, 6);
+		int kelvin;
+		if(scene.enableSun) {
+			sunShadowBuffer.bindColorTexture(0, 3);
+			progManager.light_sun.use();
+			updateMatrix(progManager.light_sun);
+			
+			Vector3f sunDir = scene.sunDirection;
+			
+			progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
+	
+			kelvin = scene.sunKelvin;
+			progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * 0.1f);
+			
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+		}
 		
 		glDisable(GL_BLEND);
 		glCullFace(GL_BACK);
@@ -900,7 +941,7 @@ public class GlobalRenderer {
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		
-		if(GameConfiguration.enableSunlightVolumetric && scene.lightShafts) {
+		if(GameConfiguration.enableSunlightVolumetric && scene.lightShafts && scene.enableSun) {
 			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
 			postBufferA.setSize(w, h);
@@ -1012,24 +1053,32 @@ public class GlobalRenderer {
 		glDisable(GL_STENCIL_TEST);
 		
 		// ============================================ RENDER LENS FLARES ==================================================
+
 		
-		lensFlareRenderer.xPixelsInv = 1.0f;
-		lensFlareRenderer.yPixelsInv = (float)w / (float)h;
+		combinedBuffer.setDepthAttached(false);
 		
-		gBuffer.bindDepthTexture(0);
-		cloudMapGenerator.bindTextureA(1);
-		cloudMapGenerator.bindTextureB(2);
-		lensFlareRenderer.processOcclusion(scene);
+		if(scene.enableSun) {
+			lensFlareRenderer.xPixelsInv = 1.0f;
+			lensFlareRenderer.yPixelsInv = (float)w / (float)h;
+			
+			gBuffer.bindDepthTexture(0);
+			cloudMapGenerator.bindTextureA(1);
+			cloudMapGenerator.bindTextureB(2);
+			lensFlareRenderer.processOcclusion(scene);
+			
+			combinedBuffer.bindFramebuffer();
+			glViewport(0, 0, w, h);
+
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ONE);
+			
+			lensFlareRenderer.render(scene);
+			
+		}
 		
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
 		
-		combinedBuffer.bindFramebuffer();
-		glViewport(0, 0, w, h);
-		
-		lensFlareRenderer.render(scene);
-		
-		combinedBuffer.setDepthAttached(false);
 		lightRenderers = lightBulbRenderer.lensFlaresInFrustum.iterator();
 		while(lightRenderers.hasNext()) {
 			lensFlareRenderer.renderLightFlare(lightRenderers.next());
@@ -1048,10 +1097,10 @@ public class GlobalRenderer {
 		postBufferA.setSize(w, h);
 		postBufferA.bindFramebuffer();
 		
-		glViewport(0, 0, w / 2, h / 2);
+		glViewport(0, 0, w / 8 * 4, h / 8 * 4);
 		
 		progManager.p3f2f_texture.use();
-		modelMatrix.translate(1.0f / w, 1.0f / h, 0.0f);
+		//modelMatrix.translate(1.0f / w, 1.0f / h, 0.0f);
 		updateMatrix(progManager.p3f2f_texture);
 		combinedBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1063,11 +1112,11 @@ public class GlobalRenderer {
 		postBufferB.setSize(w, h);
 		postBufferB.bindFramebuffer();
 		
-		glViewport(0, 0, w / 4, h / 4);
+		glViewport(0, 0, w / 8 * 2, h / 8 * 2);
 		
 		progManager.p3f2f_texture.use();
 		modelMatrix.pushMatrix();
-		modelMatrix.translate(1.0f + (2.0f / w), 1.0f + (2.0f / h), 0.0f);
+		modelMatrix.translate(1.0f, 1.0f, 0.0f);
 		modelMatrix.scale(2.0f);
 		updateMatrix(progManager.p3f2f_texture);
 		postBufferA.bindColorTexture(0);
@@ -1086,8 +1135,8 @@ public class GlobalRenderer {
 			
 			progManager.p3f2f_texture.use();
 			modelMatrix.pushMatrix();
-			modelMatrix.translate(1.0f, 1.0f, 0.0f);
-			modelMatrix.scale(2.0f);
+			modelMatrix.translate(3.0f, 3.0f, 0.0f);
+			modelMatrix.scale(4.0f);
 			updateMatrix(progManager.p3f2f_texture);
 			postBufferB.bindColorTexture(0);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1111,35 +1160,114 @@ public class GlobalRenderer {
 		}
 		
 		if(GameConfiguration.enableBloom) {
-			// ========================================= HORIZONTAL BLOOM ==============================================
+			// ========================================= RIGHT BLOOM ==============================================
 			
 			postBufferA.setSize(w, h);
 			postBufferA.bindFramebuffer();
-			glViewport(0, 0, w / 4, h / 4);
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			glViewport(0, 0, w / 8 * 2, h / 8 * 2);
 	
 			progManager.post_bloom_h.use();
 			progManager.post_bloom_h_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+			progManager.post_bloom_h_exposure.set1f(exposure);
 			postBufferB.bindColorTexture(0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			
-			// ========================================= VERTICAL BLOOM ==============================================
+			// ========================================= LEFT BLOOM ==============================================
 			
 			postBufferC.setSize(w, h);
 			postBufferC.bindFramebuffer();
-			glViewport(0, 0, w / 4, h / 4);
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			glViewport(0, 0, w / 8 * 2, h / 8 * 2);
 			
-			progManager.post_bloom_v.use();
-			progManager.post_bloom_v_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+			progManager.post_bloom.use();
+			progManager.post_bloom_screenSizeInv.set2f(-1.0f / w, 1.0f / h);
+			progManager.post_bloom_offset.set2f(0.0f, 0.0f);
+			progManager.post_bloom_scale.set1f(0.25f);
 			postBufferA.bindColorTexture(0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			int blurLoops = w / 2000;
+			
+			for(int j = 0; j < blurLoops; ++j) {
+				// ========================================= RIGHT BLOOM AGAIN ==============================================
+				
+				postBufferA.setSize(w, h);
+				postBufferA.bindFramebuffer();
+				glViewport(0, 0, w / 8 * 2, h / 8 * 2);
+				
+				postBufferC.bindColorTexture(0);
+				progManager.post_bloom_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+				quadArray.draw(GL_TRIANGLES, 0, 6);
+				
+				// ========================================= LEFT BLOOM AGAIN ==============================================
+				
+				postBufferC.setSize(w, h);
+				postBufferC.bindFramebuffer();
+				glViewport(0, 0, w / 8 * 2, h / 8 * 2);
+				
+				postBufferA.bindColorTexture(0);
+				progManager.post_bloom_screenSizeInv.set2f(-1.0f / w, 1.0f / h);
+				quadArray.draw(GL_TRIANGLES, 0, 6);
+			}
+			
+			
+			// =========================================== DOWNSCALE ONCE AGAIN =================================================
+			postBufferB.bindFramebuffer();
+			glViewport(w / 4, 0, w / 8, h / 8);
+			
+			progManager.p3f2f_texture.use();
+			modelMatrix.pushMatrix();
+			modelMatrix.translate(3.0f, 3.0f, 0.0f);
+			modelMatrix.scale(4.0f);
+			updateMatrix(progManager.p3f2f_texture);
+			postBufferC.bindColorTexture(0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			modelMatrix.popMatrix();
+			
+			// ========================================= RIGHT BLOOM AGAIN ==============================================
+			postBufferA.bindFramebuffer();
+	
+			progManager.post_bloom.use();
+			progManager.post_bloom_screenSizeInv.set2f(2.0f / w, 2.0f / h);
+			progManager.post_bloom_offset.set2f(0.25f, 0.0f);
+			progManager.post_bloom_scale.set1f(0.125f);
+			postBufferB.bindColorTexture(0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			// ========================================= LEFT BLOOM AGAIN ==============================================
+			
+			postBufferC.bindFramebuffer();
+	
+			progManager.post_bloom.use();
+			progManager.post_bloom_screenSizeInv.set2f(-2.0f / w, 2.0f / h);
+			postBufferA.bindColorTexture(0);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			for(int j = 0; j < 3; ++j) {
+				// ========================================= RIGHT BLOOM AGAIN ==============================================
+				
+				postBufferA.bindFramebuffer();
+		
+				progManager.post_bloom.use();
+				progManager.post_bloom_screenSizeInv.set2f(4.0f / w, 4.0f / h);
+				postBufferC.bindColorTexture(0);
+				quadArray.draw(GL_TRIANGLES, 0, 6);
+				
+				// ========================================= LEFT BLOOM AGAIN ==============================================
+				
+				postBufferC.bindFramebuffer();
+		
+				progManager.post_bloom.use();
+				progManager.post_bloom_screenSizeInv.set2f(-4.0f / w, 4.0f / h);
+				postBufferA.bindColorTexture(0);
+				quadArray.draw(GL_TRIANGLES, 0, 6);
+			}
+			
 		}else {
 			postBufferC.setSize(w, h);
 			postBufferC.bindFramebuffer();
-			glViewport(0, 0, w / 4, h / 4);
+			glViewport(0, 0, w, h);
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 		}
@@ -1155,11 +1283,16 @@ public class GlobalRenderer {
 		progManager.bloom_combine_lens_startRandom.set1f(grainStartRandom);
 		progManager.bloom_combine_lens_endRandom.set1f(grainEndRandom);
 		progManager.bloom_combine_lens_randomTransition.set1f(client.partialTicks);
+		
+		postBufferC.bindColorTexture(0, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		combinedBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		postBufferC.bindColorTexture(0, 1);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		postBufferC.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		combinedBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -1214,46 +1347,74 @@ public class GlobalRenderer {
 	}
 	
 	public void renderSkyDome(RenderScene scene, boolean lowPolySky) {
-		
-		glEnable(GL_STENCIL_TEST);
-		glStencilMask(0x0);
-		glStencilFunc(GL_EQUAL, 0, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-		
-		progManager.sky.use();
-		updateMatrix(progManager.sky);
-		
-		int kelvin = scene.sunKelvin;
-		float scale = 10.0f;
-		progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
-		
-		kelvin = (int) lerp(scene.sunKelvin + 2000, 6000, Math.max(1.0f - scene.sunDirection.y, 0.0f));
-		progManager.sky_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
-		
-		progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
-		progManager.sky_sunSize.set1f(scene.sunSize);
-		
-		float altitude = (float) renderPosY;
-		if(altitude > 100000.0f) altitude = 100000.0f;
-		if(altitude < -1000.0f) altitude = -1000.0f;
-		progManager.sky_altitude.set1f(altitude);
-
-		this.cloudMapGenerator.bindTextureB(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		this.cloudMapGenerator.bindTextureA(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		this.cloudMapGenerator.bindTextureB(1);
-		this.starsTexture.bind(2);
-		progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
-		
-		if(lowPolySky) {
-			skyDomeSmall.drawAll(GL_TRIANGLES);
-		}else {
-			skyDome.drawAll(GL_TRIANGLES);
+		if(scene.enableSun) {
+			glEnable(GL_STENCIL_TEST);
+			glStencilMask(0x0);
+			glStencilFunc(GL_EQUAL, 0, 0xFF);
+			glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+			
+			glDisable(GL_DEPTH_TEST);
+			
+			progManager.sky.use();
+			updateMatrix(progManager.sky);
+			
+			int kelvin = scene.sunKelvin;
+			float scale = 10.0f;
+			progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+			
+			kelvin = (int) lerp(scene.sunKelvin + 2000, 6000, Math.max(1.0f - scene.sunDirection.y, 0.0f));
+			progManager.sky_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+			
+			progManager.sky_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+			progManager.sky_sunSize.set1f(scene.sunSize);
+			
+			float altitude = (float) renderPosY;
+			if(altitude > 100000.0f) altitude = 100000.0f;
+			if(altitude < -1000.0f) altitude = -1000.0f;
+			progManager.sky_altitude.set1f(altitude);
+	
+			this.cloudMapGenerator.bindTextureB(0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			this.cloudMapGenerator.bindTextureA(0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			this.cloudMapGenerator.bindTextureB(1);
+			this.starsTexture.bind(2);
+			progManager.sky_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
+			
+			if(lowPolySky) {
+				skyDomeSmall.drawAll(GL_TRIANGLES);
+			}else {
+				skyDome.drawAll(GL_TRIANGLES);
+			}
+			
+			moonsTexture.bind(0);
+			progManager.moon.use();
+			progManager.moon_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
+			
+			int moonFace = ((scene.time / 30000) + 12) % 24;
+			progManager.moon_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
+			
+			modelMatrix.pushMatrix();
+			
+			glEnable(GL_BLEND);
+			if(scene.sunDirection.y > 0.0f) {
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+			}else {
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			}
+			
+			modelMatrix.rotateTowards(scene.moonDirection.x, scene.moonDirection.y, scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
+			modelMatrix.translate(0.0f, 0.0f, 15.0f);
+			updateMatrix(progManager.moon);
+			
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+			glDisable(GL_BLEND);
+			
+			modelMatrix.popMatrix();
+			
+			glDisable(GL_STENCIL_TEST);
 		}
-		
-		glDisable(GL_STENCIL_TEST);
-		
 	}
 
 	public void updateMatrix(EaglProgram prog) {
@@ -1300,38 +1461,40 @@ public class GlobalRenderer {
 		grainEndRandom = grainStartRandom;
 		grainStartRandom = rand.nextFloat();
 		
-		exposureCalcTexture.setSize(1, 1);
-		exposureCalcTexture.bindFramebuffer();
-		
-		glViewport(0, 0, 1, 1);
-		
-		if(!nextTick) {
-			float sceneBrightness = 1.0f;
-			
-			try(MemoryStack s = MemoryStack.stackPush()) {
-				FloatBuffer buf = s.malloc(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-				exposureCalcTexture.bindColorTexture(0);
-				glReadPixels(0, 0, 1, 1, GL_RED, GL_FLOAT, buf);
-				sceneBrightness = buf.get(0);
-			}
-			
-			nextTick = true;
-			
-			sceneBrightness += 0.1f;
-			sceneBrightness *= 4.0f;
-			
-			targetExposure = 1.0f / sceneBrightness;
-			
-			if(targetExposure < 0.1f) targetExposure = 0.1f;
-			
-			exposure += (targetExposure - exposure) * 0.05f;
-		}
-		
 		cloudMapGenerator.renderCloudMap(GameClient.instance.getScene());
+		
+		if((totalTicks + 10) % 20 == 0) {
+			if(!nextTick) {
+				
+				exposureCalcTexture.setSize(1, 1);
+				exposureCalcTexture.bindFramebuffer();
+				
+				glViewport(0, 0, 1, 1);
+				
+				float sceneBrightness = 1.0f;
+				
+				try(MemoryStack s = MemoryStack.stackPush()) {
+					FloatBuffer buf = s.mallocFloat(1);
+					exposureCalcTexture.bindColorTexture(0);
+					glReadPixels(0, 0, 1, 1, GL_RED, GL_FLOAT, buf);
+					sceneBrightness = buf.get(0);
+				}
+				
+				nextTick = true;
+				
+				sceneBrightness += 0.1f;
+				
+				targetExposure = 1.0f / sceneBrightness;
+			}
+		}
 		
 		if(totalTicks % 20 == 0) {
 			cubemapGenerator.updateIrradianceTexture();
 		}
+		
+		if(targetExposure < 0.1f) targetExposure = 0.1f;
+		
+		exposure += (targetExposure - exposure) * 0.05f;
 		
 		++totalTicks;
 	}
@@ -1457,6 +1620,7 @@ public class GlobalRenderer {
 		this.lensFlareRenderer.destroy();
 		//glDeleteQueries(queryObjectPool);
 		this.starsTexture.destroy();
+		this.moonsTexture.destroy();
 	}
 
 }

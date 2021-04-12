@@ -16,7 +16,7 @@ import net.eagtek.eagl.EaglImage2D;
 import net.eagtek.eagl.GLStateManager;
 import net.eagtek.eagl.ResourceLoader;
 
-public class RenderLightBulbs {
+class RenderLightBulbs {
 	
 	public final GlobalRenderer renderer;
 	

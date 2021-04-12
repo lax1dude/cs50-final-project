@@ -7,7 +7,7 @@ import net.eagtek.eagl.EaglFramebuffer.DepthBufferType;
 import net.eagtek.metaballs.MathUtil;
 import net.eagtek.metaballs.client.GameConfiguration;
 
-public class CloudMapGenerator {
+class CloudMapGenerator {
 	
 	public final GlobalRenderer renderer;
 	public final EaglFramebuffer bufferA;

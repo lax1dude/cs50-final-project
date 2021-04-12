@@ -36,19 +36,19 @@ import org.lwjgl.egl.EGL;
 
 
 public class EaglContext {
-	
+
 	public final int KEY_SPACE, KEY_APOSTROPHE, KEY_COMMA, KEY_MINUS, KEY_PERIOD, KEY_SLASH, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_SEMICOLON, KEY_EQUAL, KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H, KEY_I, KEY_J, KEY_K, KEY_L, KEY_M, KEY_N, KEY_O, KEY_P,
-			KEY_Q, KEY_R, KEY_S, KEY_T, KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y, KEY_Z, KEY_LEFT_BRACKET, KEY_BACKSLASH, KEY_RIGHT_BRACKET, KEY_GRAVE_ACCENT, KEY_WORLD_1, KEY_WORLD_2, KEY_ESCAPE, KEY_ENTER, KEY_TAB, KEY_BACKSPACE, KEY_INSERT, KEY_DELETE, KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP, KEY_PAGE_UP,
-			KEY_PAGE_DOWN, KEY_HOME, KEY_END, KEY_CAPS_LOCK, KEY_SCROLL_LOCK, KEY_NUM_LOCK, KEY_PRINT_SCREEN, KEY_PAUSE, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20, KEY_F21,
-			KEY_F22, KEY_F23, KEY_F24, KEY_F25, KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_DECIMAL, KEY_KP_DIVIDE, KEY_KP_MULTIPLY, KEY_KP_SUBTRACT, KEY_KP_ADD, KEY_KP_ENTER, KEY_KP_EQUAL, KEY_LEFT_SHIFT, KEY_LEFT_CONTROL, KEY_LEFT_ALT,
-			KEY_LEFT_SUPER, KEY_RIGHT_SHIFT, KEY_RIGHT_CONTROL, KEY_RIGHT_ALT, KEY_RIGHT_SUPER, KEY_MENU, KEY_LAST;
-	
+	KEY_Q, KEY_R, KEY_S, KEY_T, KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y, KEY_Z, KEY_LEFT_BRACKET, KEY_BACKSLASH, KEY_RIGHT_BRACKET, KEY_GRAVE_ACCENT, KEY_WORLD_1, KEY_WORLD_2, KEY_ESCAPE, KEY_ENTER, KEY_TAB, KEY_BACKSPACE, KEY_INSERT, KEY_DELETE, KEY_RIGHT, KEY_LEFT, KEY_DOWN, KEY_UP, KEY_PAGE_UP,
+	KEY_PAGE_DOWN, KEY_HOME, KEY_END, KEY_CAPS_LOCK, KEY_SCROLL_LOCK, KEY_NUM_LOCK, KEY_PRINT_SCREEN, KEY_PAUSE, KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5, KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10, KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15, KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20, KEY_F21,
+	KEY_F22, KEY_F23, KEY_F24, KEY_F25, KEY_KP_0, KEY_KP_1, KEY_KP_2, KEY_KP_3, KEY_KP_4, KEY_KP_5, KEY_KP_6, KEY_KP_7, KEY_KP_8, KEY_KP_9, KEY_KP_DECIMAL, KEY_KP_DIVIDE, KEY_KP_MULTIPLY, KEY_KP_SUBTRACT, KEY_KP_ADD, KEY_KP_ENTER, KEY_KP_EQUAL, KEY_LEFT_SHIFT, KEY_LEFT_CONTROL, KEY_LEFT_ALT,
+	KEY_LEFT_SUPER, KEY_RIGHT_SHIFT, KEY_RIGHT_CONTROL, KEY_RIGHT_ALT, KEY_RIGHT_SUPER, KEY_MENU, KEY_LAST;
+
 	public static final Logger log = LoggerFactory.getLogger("EAGL");
 
 	public static enum ToolkitPlatform {
 		desktop;
 	}
-	
+
 	public static enum ContextPlatform {
 		angle(GLFW_ANGLE_PLATFORM_TYPE_NONE, "default"),
 		d3d11(GLFW_ANGLE_PLATFORM_TYPE_D3D11, "d3d11"),
@@ -56,15 +56,15 @@ public class EaglContext {
 		opengles(GLFW_ANGLE_PLATFORM_TYPE_OPENGLES, "opengles"),
 		metal(GLFW_ANGLE_PLATFORM_TYPE_METAL, "metal"),
 		vulkan(GLFW_ANGLE_PLATFORM_TYPE_VULKAN, "vulkan");
-		
+
 		protected final int eglEnum;
 		public final String id;
-		
+
 		private ContextPlatform(int eglEnum, String id) {
 			this.eglEnum = eglEnum;
 			this.id = id;
 		}
-		
+
 	}
 
 	public final ToolkitPlatform toolkit;
@@ -76,13 +76,13 @@ public class EaglContext {
 
 	private long glfw_windowHandle = 0l;
 	private long glfw_eglHandle = 0l;
-	
+
 	private GLESCapabilities caps = null;
-	
+
 	public GLESCapabilities getGLESCapabilities() {
 		return caps;
 	}
-	
+
 	public boolean contextLost() {
 		return glfwGetWindowAttrib(glfw_windowHandle, GLFW_ICONIFIED) == GLFW_TRUE;
 	}
@@ -90,11 +90,11 @@ public class EaglContext {
 	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, int resolutionDiv) {
 		this(toolkit, platform, title, true, resolutionDiv, 0);
 	}
-	
+
 	public EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, int monitorNum, int resolutionDiv) {
 		this(toolkit, platform, title, false, resolutionDiv, monitorNum);
 	}
-	
+
 	private EaglContext(ToolkitPlatform toolkit, ContextPlatform platform, String title, boolean windowed, int resolutionDiv, int monitorNum) {
 		this.toolkit = toolkit;
 		this.platform = platform;
@@ -102,7 +102,7 @@ public class EaglContext {
 		this.windowed = windowed;
 		this.resolutionDiv = resolutionDiv;
 		this.monitorNum = monitorNum;
-		
+
 		if(toolkit == ToolkitPlatform.desktop) {
 			KEY_SPACE = 32;
 			KEY_APOSTROPHE = 39;
@@ -354,15 +354,15 @@ public class EaglContext {
 		if(toolkit == ToolkitPlatform.desktop) {
 			createGLFW();
 		}
-		
+
 		KHRDebug.glDebugMessageCallbackKHR(new GLDebugMessageKHRCallbackI() {
-			
+
 			@Override
 			public void invoke(int source, int type, int id, int severity, int length, long message, long userParam) {
-				
+
 				StringBuilder b = new StringBuilder();
 				b.append("[KHR DEBUG #"); b.append(id); b.append("] ");
-				
+
 				switch(source) {
 				case KHRDebug.GL_DEBUG_SOURCE_API_KHR: b.append("[API - "); break;
 				case KHRDebug.GL_DEBUG_SOURCE_APPLICATION_KHR: b.append("[APPLICATION - "); break;
@@ -370,7 +370,7 @@ public class EaglContext {
 				case KHRDebug.GL_DEBUG_SOURCE_THIRD_PARTY_KHR: b.append("[THIRD PARTY - "); break;
 				case KHRDebug.GL_DEBUG_SOURCE_OTHER_KHR: default: b.append("[OTHER - "); break;
 				}
-				
+
 				switch(type) {
 				case KHRDebug.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_KHR: b.append("DEPRECATED BEHAVIOR] "); break;
 				case KHRDebug.GL_DEBUG_TYPE_ERROR_KHR: b.append("ERROR] "); break;
@@ -380,30 +380,30 @@ public class EaglContext {
 				case KHRDebug.GL_DEBUG_TYPE_PORTABILITY_KHR: b.append("PORTABILITY] "); break;
 				case KHRDebug.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_KHR: b.append("UNDEFINED BEHAVIOR] "); break;
 				}
-				
+
 				switch(severity) {
 				default:
 				case KHRDebug.GL_DEBUG_SEVERITY_LOW_KHR: b.append("[LOW Severity] "); break;
 				case KHRDebug.GL_DEBUG_SEVERITY_MEDIUM_KHR: b.append("[MEDIUM Severity] "); break;
 				case KHRDebug.GL_DEBUG_SEVERITY_HIGH_KHR: b.append("[SEVERE] "); break;
 				}
-				
+
 				b.append(GLDebugMessageKHRCallback.getMessage(length, message));
 				log.error(b.toString());
-				
+
 				StackTraceElement[] ex = new RuntimeException().getStackTrace();
 				for(int i = 0; i < ex.length; ++i) {
 					log.error("    at {}", ex[i]);
 				}
 				//throw new RuntimeException();
 			}
-			
+
 		}, 0l);
 
 		glEnable(KHRDebug.GL_DEBUG_OUTPUT_KHR);
 		glEnable(KHRDebug.GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
 	}
-	
+
 	public void checkError(String location) {
 		int error;
 		while((error = glGetError()) != GL_NO_ERROR) {
@@ -433,18 +433,18 @@ public class EaglContext {
 
 	private void createGLFW() {
 		GLFWErrorCallback.createThrow().set();
-		
+
 		glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, platform.eglEnum);
 		glfwInit();
-		
+
 		log.info("GLFW Version: {}", glfwGetVersionString());
-		
+
 		PointerBuffer buf = glfwGetMonitors();
-		
+
 		if(monitorNum > buf.limit() - 1) {
 			monitorNum = buf.limit() - 1;
 		}
-		
+
 		GLFWVidMode v = glfwGetVideoMode(buf.get(monitorNum));
 
 		int w = v.width() / resolutionDiv;
@@ -455,7 +455,7 @@ public class EaglContext {
 
 		int x = (v.width() - w) / 2;
 		int y = (v.height() - h) / 2;
-		
+
 		glfwDefaultWindowHints();
 		glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -467,39 +467,40 @@ public class EaglContext {
 
 		glfwWindowHint(GLFW_CENTER_CURSOR, GLFW_TRUE);
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-		
-        glfw_windowHandle = glfwCreateWindow(w, h, title, windowed ? NULL : buf.get(monitorNum), NULL);
-        
-        if(windowed) {
-        	int[] x2 = new int[1];
-        	int[] y2 = new int[1];
-        	int[] w2 = new int[1];
-        	int[] h2 = new int[1];
-        	glfwGetWindowFrameSize(glfw_windowHandle, x2, y2, w2, h2);
-        	glfwSetWindowSize(glfw_windowHandle, ((w + x2[0] - w2[0]) / 4) * 4, ((h - y2[0] - h2[0]) / 4) * 4);
-        }
-        
-        glfw_eglHandle = glfwGetEGLDisplay();
-        
+
+		glfw_windowHandle = glfwCreateWindow(w, h, title, windowed ? NULL : buf.get(monitorNum), NULL);
+
+		if(resolutionDiv == 1 && windowed) {
+			int[] x2 = new int[1];
+			int[] y2 = new int[1];
+			int[] w2 = new int[1];
+			int[] h2 = new int[1];
+			glfwGetWindowFrameSize(glfw_windowHandle, x2, y2, w2, h2);
+			glfwSetWindowSize(glfw_windowHandle, ((w - x2[0] - w2[0]) / 4) * 4, ((h - y2[0] - h2[0]) / 4) * 4);
+			glfwSetWindowAttrib(glfw_windowHandle, GLFW_FLOATING, GLFW_TRUE);
+		}
+
+		glfw_eglHandle = glfwGetEGLDisplay();
+
 		log.info("EGL Version: {}", eglQueryString(glfw_eglHandle, EGL_VERSION));
-        
-        if(!windowed) glfwSetWindowPos(glfw_windowHandle, x, y);
-        
-        int[] major = new int[] { 1 };
-        int[] minor = new int[] { 4 };
-        if(!eglInitialize(glfw_eglHandle, major, minor)) {
-        	throw new RuntimeException("Could not initialize EGL");
-        }
-        
-        EGL.createDisplayCapabilities(glfw_eglHandle, major[0], minor[0]);
-        glfwMakeContextCurrent(glfw_windowHandle);
-        
-        caps = GLES.createCapabilities();
 
-        log.info("OpenGL Version: {}", glGetString(GL_VERSION));
-        log.info("OpenGL Renderer: {}", glGetString(GL_RENDERER));
+		if(!windowed) glfwSetWindowPos(glfw_windowHandle, x, y);
 
-        glfwSetKeyCallback(glfw_windowHandle, new GLFWKeyCallbackI() {
+		int[] major = new int[] { 1 };
+		int[] minor = new int[] { 4 };
+		if(!eglInitialize(glfw_eglHandle, major, minor)) {
+			throw new RuntimeException("Could not initialize EGL");
+		}
+
+		EGL.createDisplayCapabilities(glfw_eglHandle, major[0], minor[0]);
+		glfwMakeContextCurrent(glfw_windowHandle);
+
+		caps = GLES.createCapabilities();
+
+		log.info("OpenGL Version: {}", glGetString(GL_VERSION));
+		log.info("OpenGL Renderer: {}", glGetString(GL_RENDERER));
+
+		glfwSetKeyCallback(glfw_windowHandle, new GLFWKeyCallbackI() {
 			@Override
 			public void invoke(long window, int key, int scancode, int action, int mods) {
 				if(keyEvents.size() < 256 && !(!keyRepeat && action == GLFW_REPEAT)) {
@@ -507,8 +508,8 @@ public class EaglContext {
 				}
 			}
 		});
-        
-        glfwSetCharCallback(glfw_windowHandle, new GLFWCharCallbackI() {
+
+		glfwSetCharCallback(glfw_windowHandle, new GLFWCharCallbackI() {
 			@Override
 			public void invoke(long window, int codepoint) {
 				if(keyChars.size() < 256) {
@@ -516,16 +517,16 @@ public class EaglContext {
 				}
 			}
 		});
-        
-        glfwSetCursorPosCallback(glfw_windowHandle, new GLFWCursorPosCallbackI() {
+
+		glfwSetCursorPosCallback(glfw_windowHandle, new GLFWCursorPosCallbackI() {
 			@Override
 			public void invoke(long window, double xpos, double ypos) {
 				EaglContext.this.mousex = (int)xpos;
 				EaglContext.this.mousey = (int)ypos;
 			}
 		});
-        
-        glfwSetMouseButtonCallback(glfw_windowHandle, new GLFWMouseButtonCallbackI() {
+
+		glfwSetMouseButtonCallback(glfw_windowHandle, new GLFWMouseButtonCallbackI() {
 			@Override
 			public void invoke(long window, int button, int action, int mods) {
 				if(mouseEvents.size() < 256) {
@@ -533,16 +534,16 @@ public class EaglContext {
 				}
 			}
 		});
-        
-        glfwSetWindowFocusCallback(glfw_windowHandle, new GLFWWindowFocusCallbackI() {
+
+		glfwSetWindowFocusCallback(glfw_windowHandle, new GLFWWindowFocusCallbackI() {
 			@Override
 			public void invoke(long window, boolean focused) {
 				EaglContext.this.focused = focused;
 			}
 		});
-        
+
 	}
-	
+
 	public void destroy() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			destroyGLFW();
@@ -553,7 +554,7 @@ public class EaglContext {
 		GLES.setCapabilities(null);
 		glfwTerminate();
 	}
-	
+
 	public static boolean contextAvailable() {
 		try {
 			GLES.getCapabilities();
@@ -562,19 +563,19 @@ public class EaglContext {
 			return false;
 		}
 	}
-	
+
 	public void setTitle(String s) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwSetWindowTitle(glfw_windowHandle, title = s);
 		}
 	}
-	
+
 	public void setSize(int w, int h) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwSetWindowSize(glfw_windowHandle, w, h);
 		}
 	}
-	
+
 	public int getOuterWidth() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			int[] w = new int[1];
@@ -584,7 +585,7 @@ public class EaglContext {
 		}
 		return 0;
 	}
-	
+
 	public int getOuterHeight() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			int[] w = new int[1];
@@ -604,7 +605,7 @@ public class EaglContext {
 		}
 		return 0;
 	}
-	
+
 	public int getInnerHeight() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			int[] w = new int[1];
@@ -614,28 +615,28 @@ public class EaglContext {
 		}
 		return 0;
 	}
-	
+
 	public String getClipboardString() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwGetClipboardString(glfw_windowHandle);
 		}
 		return null;
 	}
-	
+
 	public void setClipboardString(String s) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwSetClipboardString(glfw_windowHandle, s);
 		}
 	}
-	
+
 	public void setFullscreen(boolean fs) {
 		throw new RuntimeException("not implemented");
 	}
-	
+
 	public boolean getFullscreen() {
 		throw new RuntimeException("not implemented");
 	}
-	
+
 	public void setIcons(BufferedImage[] icons) {
 		try {
 			try (MemoryStack memorystack = MemoryStack.stackPush()) {
@@ -644,17 +645,17 @@ public class EaglContext {
 					buffer.position(i);
 					buffer.width(icons[i].getWidth());
 					buffer.height(icons[i].getHeight());
-					
+
 					int[] image = icons[i].getRGB(0, 0, icons[i].getWidth(), icons[i].getHeight(), null, 0, icons[i].getWidth());
-					
+
 					for(int j = 0; j < image.length; ++j) {
 						image[j] = image[j] << 8;
 					}
-					
+
 					ByteBuffer imageBuffer = memorystack.malloc(image.length * 4).order(ByteOrder.BIG_ENDIAN);
-					
+
 					imageBuffer.asIntBuffer().put(image);
-					
+
 					buffer.pixels(imageBuffer);
 				}
 				glfwSetWindowIcon(glfw_windowHandle, buffer);
@@ -662,39 +663,39 @@ public class EaglContext {
 		}catch(Throwable t) {
 		}
 	}
-	
+
 	public void swapBuffers(boolean sync) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwSwapInterval(sync ? 1 : 0);
 			glfwSwapBuffers(glfw_windowHandle);
 		}
 	}
-	
+
 	public void pollEvents() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwPollEvents();
 		}
 	}
-	
+
 	public boolean closeRequested() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwWindowShouldClose(glfw_windowHandle);
 		}
 		return false;
 	}
-	
+
 	private boolean keyRepeat = true;
-	
+
 	public boolean getKeyRepeatEnabled() {
 		return keyRepeat;
 	}
-	
+
 	public void setKeyRepeatEnabled(boolean e) {
 		keyRepeat = e;
 	}
 
 	private final TCharLinkedList keyChars = new TCharLinkedList();
-	
+
 	public char nextKeyboardChar() {
 		if(keyChars.size() > 0) {
 			char c = keyChars.get(0);
@@ -704,21 +705,21 @@ public class EaglContext {
 			return '\0';
 		}
 	}
-	
+
 	public static class KeyboardEvent {
-		
+
 		public final int code;
 		public final boolean pressed;
 		public final boolean repeated;
-		
+
 		protected KeyboardEvent(int code, boolean pressed, boolean repeated) {
 			this.code = code;
 			this.pressed = pressed;
 			this.repeated = repeated;
 		}
-		
+
 	}
-	
+
 	private final LinkedList<KeyboardEvent> keyEvents = new LinkedList();
 
 	public KeyboardEvent keyboardNext() {
@@ -728,32 +729,32 @@ public class EaglContext {
 			return null;
 		}
 	}
-	
+
 	public boolean isKeyDown(int key) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwGetKey(glfw_windowHandle, key) == GLFW_PRESS;
 		}
 		return false;
 	}
-	
+
 	public String getKeyName(int key) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwGetKeyName(key, 0);
 		}
 		return null;
 	}
-	
+
 	public static class MouseEvent {
 
 		public final boolean pressed;
 		public final int button;
 		public final int x;
 		public final int y;
-		
+
 		public final boolean dwheel;
 		public final float dwheelx;
 		public final float dwheely;
-		
+
 		protected MouseEvent(boolean pressed, int button, int x, int y, boolean dwheel, float dwheelx, float dwheely) {
 			this.pressed = pressed;
 			this.button = button;
@@ -766,7 +767,7 @@ public class EaglContext {
 	}
 
 	private final LinkedList<MouseEvent> mouseEvents = new LinkedList();
-	
+
 	public MouseEvent mouseNext() {
 		if(mouseEvents.size() > 0) {
 			return mouseEvents.remove(0);
@@ -774,7 +775,7 @@ public class EaglContext {
 			return null;
 		}
 	}
-	
+
 	public boolean isMouseDown(int button) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwGetMouseButton(glfw_windowHandle, button) == GLFW_PRESS;
@@ -787,51 +788,51 @@ public class EaglContext {
 			glfwSetInputMode(glfw_windowHandle, GLFW_CURSOR, grabbed ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 		}
 	}
-	
+
 	private boolean focused = true;
-	
+
 	public boolean windowHasFocus() {
 		return focused;
 	}
-	
+
 	public boolean getMouseGrabbed() {
 		if(toolkit == ToolkitPlatform.desktop) {
 			return glfwGetInputMode(glfw_windowHandle, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
 		}
 		return false;
 	}
-	
+
 	private int mousex = 0;
 	private int mousey = 0;
-	
+
 	public int mouseX() {
 		return mousex;
 	}
-	
+
 	public int mouseY() {
 		return mousey;
 	}
-	
+
 	public void setMousePos(int x, int y) {
 		if(toolkit == ToolkitPlatform.desktop) {
 			glfwSetCursorPos(glfw_windowHandle, x, y);
 		}
 	}
-	
+
 	/*
 
 	public static class ControllerEvent {
-		
+
 		public final boolean pressed;
 		public final int button;
-		
+
 		protected ControllerEvent(boolean pressed, int button) {
 			this.pressed = pressed;
 			this.button = button;
 		}
-		
+
 	}
-	
+
 	private final LinkedList<ControllerEvent> controllerEvents = new LinkedList();
 
 	public ControllerEvent controllerNext() {
@@ -841,26 +842,26 @@ public class EaglContext {
 			return null;
 		}
 	}
-	
+
 	public boolean getControllerButtonDown(int button) {
 		return false;
 	}
-	
+
 	public float getControllerMainX() {
 		return 0f;
 	}
-	
+
 	public float getControllerMainY() {
 		return 0f;
 	}
-	
+
 	public float getControllerPovX() {
 		return 0f;
 	}
-	
+
 	public float getControllerPovY() {
 		return 0f;
 	}
-	*/
+	 */
 
 }

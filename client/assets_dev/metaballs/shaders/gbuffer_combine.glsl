@@ -71,7 +71,7 @@ void main() {
 	vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
 	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = (diffuseV.rgb * (lightDiffuseV + irradiance * 0.3) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
+	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (materialV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
 	fragOut = vec4(mix(color, cubemap * 0.5 + lightSpecularV, materialV.a), 1.0);
 }
 

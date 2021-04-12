@@ -111,9 +111,12 @@ public class ProgramManager {
 	public final GlobalRenderer renderer;
 	
 	public EaglProgram post_bloom_h;
-	public EaglProgram post_bloom_v;
+	public EaglProgram post_bloom;
 	public EaglUniform post_bloom_h_screenSizeInv;
-	public EaglUniform post_bloom_v_screenSizeInv;
+	public EaglUniform post_bloom_h_exposure;
+	public EaglUniform post_bloom_screenSizeInv;
+	public EaglUniform post_bloom_offset;
+	public EaglUniform post_bloom_scale;
 	
 	public EaglProgram bloom_combine_lens;
 	public EaglUniform bloom_combine_lens_startRandom;
@@ -154,7 +157,8 @@ public class ProgramManager {
 	public EaglUniform cubemap_3f_4b_2f_uniform_roughness;
 	public EaglUniform cubemap_3f_4b_2f_uniform_specular;
 	public EaglUniform cubemap_3f_4b_2f_uniform_emission;
-	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrix;
+	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrixA;
+	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrixB;
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunDirection;
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunRGB;
 	
@@ -163,7 +167,8 @@ public class ProgramManager {
 	public EaglUniform cubemap_3f_4b_uniform_roughness;
 	public EaglUniform cubemap_3f_4b_uniform_specular;
 	public EaglUniform cubemap_3f_4b_uniform_emission;
-	public EaglUniform cubemap_3f_4b_uniform_shadowMatrix;
+	public EaglUniform cubemap_3f_4b_uniform_shadowMatrixA;
+	public EaglUniform cubemap_3f_4b_uniform_shadowMatrixB;
 	public EaglUniform cubemap_3f_4b_uniform_sunDirection;
 	public EaglUniform cubemap_3f_4b_uniform_sunRGB;
 	public EaglUniform cubemap_3f_4b_uniform_diffuseColor;
@@ -190,6 +195,10 @@ public class ProgramManager {
 	public EaglProgram lens_flare_single_occlusion;
 	public EaglUniform lens_flare_single_occlusion_position;
 	public EaglUniform lens_flare_single_occlusion_size;
+	
+	public EaglProgram moon;
+	public EaglUniform moon_moonColor;
+	public EaglUniform moon_moonTexXY;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -433,16 +442,19 @@ public class ProgramManager {
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_bloom_h.fsh");
 		this.post_bloom_h = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		post_bloom_h.getUniform("tex").set1i(0);
-		
+
 		post_bloom_h_screenSizeInv = post_bloom_h.getUniform("screenSizeInv");
+		post_bloom_h_exposure = post_bloom_h.getUniform("exposure");
 		
-		source = ResourceLoader.loadResourceString("metaballs/shaders/post_bloom_v.glsl");
-		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_bloom_v.vsh");
-		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_bloom_v.fsh");
-		this.post_bloom_v = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
-		post_bloom_v.getUniform("tex").set1i(0);
-		
-		post_bloom_v_screenSizeInv = post_bloom_v.getUniform("screenSizeInv");
+		source = ResourceLoader.loadResourceString("metaballs/shaders/post_bloom.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "post_bloom.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "post_bloom.fsh");
+		this.post_bloom = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		post_bloom.getUniform("tex").set1i(0);
+
+		post_bloom_screenSizeInv = post_bloom.getUniform("screenSizeInv");
+		post_bloom_offset = post_bloom.getUniform("offset");
+		post_bloom_scale = post_bloom.getUniform("scale");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/bloom_combine_lens.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "bloom_combine_lens.vsh");
@@ -527,7 +539,8 @@ public class ProgramManager {
 		cubemap_3f_4b_2f_uniform_roughness = cubemap_3f_4b_2f_uniform.getUniform("roughness");
 		cubemap_3f_4b_2f_uniform_specular = cubemap_3f_4b_2f_uniform.getUniform("specular");
 		cubemap_3f_4b_2f_uniform_emission = cubemap_3f_4b_2f_uniform.getUniform("emission");
-		cubemap_3f_4b_2f_uniform_shadowMatrix = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_2f_uniform_shadowMatrixA = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrixA");
+		cubemap_3f_4b_2f_uniform_shadowMatrixB = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrixB");
 		cubemap_3f_4b_2f_uniform_sunDirection = cubemap_3f_4b_2f_uniform.getUniform("sunDirection");
 		cubemap_3f_4b_2f_uniform_sunRGB = cubemap_3f_4b_2f_uniform.getUniform("sunRGB");
 		
@@ -542,7 +555,8 @@ public class ProgramManager {
 		cubemap_3f_4b_uniform_roughness = cubemap_3f_4b_uniform.getUniform("roughness");
 		cubemap_3f_4b_uniform_specular = cubemap_3f_4b_uniform.getUniform("specular");
 		cubemap_3f_4b_uniform_emission = cubemap_3f_4b_uniform.getUniform("emission");
-		cubemap_3f_4b_uniform_shadowMatrix = cubemap_3f_4b_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_uniform_shadowMatrixA = cubemap_3f_4b_uniform.getUniform("shadowMatrixA");
+		cubemap_3f_4b_uniform_shadowMatrixB = cubemap_3f_4b_uniform.getUniform("shadowMatrixB");
 		cubemap_3f_4b_uniform_sunDirection = cubemap_3f_4b_uniform.getUniform("sunDirection");
 		cubemap_3f_4b_uniform_sunRGB = cubemap_3f_4b_uniform.getUniform("sunRGB");
 		cubemap_3f_4b_uniform_diffuseColor = cubemap_3f_4b_uniform.getUniform("diffuseColor");
@@ -610,6 +624,15 @@ public class ProgramManager {
 		lens_flare_single_occlusion_position = lens_flare_single_occlusion.getUniform("position");
 		lens_flare_single_occlusion_size = lens_flare_single_occlusion.getUniform("size");
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/moon.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "moon.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "moon.fsh");
+		this.moon = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		moon.getUniform("tex").set1i(0);
+		moon_moonColor = moon.getUniform("moonColor");
+		moon_moonTexXY = moon.getUniform("moonTexXY");
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -639,7 +662,7 @@ public class ProgramManager {
 		post_tonemap.destroy();
 		post_downscale8th.destroy();
 		post_bloom_h.destroy();
-		post_bloom_v.destroy();
+		post_bloom.destroy();
 		bloom_combine_lens.destroy();
 		sky.destroy();
 		light_shaft_generate.destroy();
@@ -656,6 +679,7 @@ public class ProgramManager {
 		lens_flare_occlusion.destroy();
 		lens_flare_single.destroy();
 		lens_flare_single_occlusion.destroy();
+		moon.destroy();
 	}
 
 }

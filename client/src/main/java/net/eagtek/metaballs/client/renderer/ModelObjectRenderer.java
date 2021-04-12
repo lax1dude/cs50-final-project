@@ -58,35 +58,6 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	public float r = 0.0f;
 	public float g = 0.0f;
 	public float b = 0.0f;
-
-	public double posX = 0.0d;
-	public double posY = 0.0d;
-	public double posZ = 0.0d;
-
-	public float scale = 1.0f;
-
-	public float rotationX = 0.0f;
-	public float rotationY = 0.0f;
-	public float rotationZ = 0.0f;
-	
-	public ModelObjectRenderer setPosition(double X, double Y, double Z) {
-		posX = X;
-		posY = Y;
-		posZ = Z;
-		return this;
-	}
-	
-	public ModelObjectRenderer setRotation(float X, float Y, float Z) {
-		rotationX = X;
-		rotationY = Y;
-		rotationZ = Z;
-		return this;
-	}
-	
-	public ModelObjectRenderer setScale(float f) {
-		scale = f;
-		return this;
-	}
 	
 	public ModelObjectRenderer setMaterial(float ditherBlend, float metallic, float roughness, float specular, float ssr, float emission) {
 		this.ditherBlend = ditherBlend;
@@ -121,11 +92,11 @@ public class ModelObjectRenderer extends ObjectRenderer {
 		case G_BUFFER:
 			renderGBuffer(globalRenderer);
 			break;
+		case LIGHT_SHADOW:
 		case SHADOW_A:
 		case SHADOW_B:
 		case SHADOW_C:
 		case SHADOW_D:
-		case LIGHT_SHADOW:
 			renderShadow(globalRenderer);
 			break;
 		case REFLECTION:
@@ -185,7 +156,8 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_uniform_roughness.set1f(roughness);
 				m.cubemap_3f_4b_uniform_emission.set1f(emission);
-				m.cubemap_3f_4b_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_uniform_shadowMatrixA.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_uniform_shadowMatrixB.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_uniform_sunRGB.set3f(
 						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
@@ -200,7 +172,8 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
 				m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
-				m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_2f_uniform_shadowMatrixA.setMatrix4f(globalRenderer.sunShadowProjViewA);
+				m.cubemap_3f_4b_2f_uniform_shadowMatrixB.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
 						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,

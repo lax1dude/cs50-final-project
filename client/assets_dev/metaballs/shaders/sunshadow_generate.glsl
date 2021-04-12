@@ -23,10 +23,10 @@ uniform sampler2D position;
 
 uniform sampler2D shadowMap;
 
-uniform mat4 shadowMatrixA;
-uniform mat4 shadowMatrixB;
-uniform mat4 shadowMatrixC;
-uniform mat4 shadowMatrixD;
+uniform highp mat4 shadowMatrixA;
+uniform highp mat4 shadowMatrixB;
+uniform highp mat4 shadowMatrixC;
+uniform highp mat4 shadowMatrixD;
 
 uniform mat4 matrix_v_inv;
 uniform mat4 matrix_p_inv;

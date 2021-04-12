@@ -50,7 +50,7 @@ vec2 lensDistort(vec2 uv3, float fct) {
 	vec2 t = uv2 - 0.5;
 	
 	float r = sqrt(t.x * t.x + t.y * t.y);
-	float r2 = pow(r, 2.0);
+	float r2 = r * r;
 	
 	float f = (1.0f + r2 * k1) + (k2 * pow(r, 4.0)) + (k3 * pow(r, 6.0));
 	uv2 = f * t + 0.5;
@@ -65,7 +65,8 @@ vec2 lensDistort(vec2 uv3, float fct) {
 void main() {
 	vec2 texx = lensDistort(v_texCoord,1.0);
 	vec3 color = vec3(texture(tex, lensDistort(v_texCoord,1.1)).r, texture(tex, texx).gb);
-	color += texture(bloom, texx * 0.25 + 1.0).rgb * 0.15;
+	color += texture(bloom, texx * 0.25).rgb * 0.15;
+	color += texture(bloom, (vec2(1.0) - texx) * 0.125 + vec2(0.25, 0.0)).rgb * vec3(0.0, 0.005, 0.07) * length(texx - vec2(0.5));
 	
 	vec3 grain = rand3(v_texCoord) * 0.5;
 	color *= (0.9 + grain * 0.1);
