@@ -455,7 +455,12 @@ public class GlobalRenderer {
 		modelMatrix.pushMatrix();
 		modelMatrix.identity();
 		
-		cameraMatrix.identity().translate(0f, 0f, -GameConfiguration.sunShadowDistance).lookAlong(scene.sunDirection.mul(-1.0f, up2), up);
+		cameraMatrix.identity().translate(0f, 0f, -GameConfiguration.sunShadowDistance);
+		if(scene.sunDirection.y > 0.0f) {
+			cameraMatrix.lookAlong(scene.sunDirection.mul(-1.0f, up2), up);
+		}else {
+			cameraMatrix.lookAlong(scene.moonDirection.mul(-1.0f, up2), up);
+		}
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).ortho(
 				-GameConfiguration.sunShadowLODADistance, 
@@ -932,12 +937,17 @@ public class GlobalRenderer {
 			progManager.light_sun.use();
 			updateMatrix(progManager.light_sun);
 			
-			Vector3f sunDir = scene.sunDirection;
-			
-			progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
-	
-			kelvin = scene.sunKelvin;
-			progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * 0.1f);
+			if(scene.sunDirection.y > 0.0f) {
+				Vector3f sunDir = scene.sunDirection;
+				progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
+				kelvin = scene.sunKelvin;
+				progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * 0.1f);
+			}else {
+				Vector3f sunDir = scene.moonDirection;
+				progManager.light_sun_direction.set3f(sunDir.x, sunDir.y, sunDir.z);
+				kelvin = scene.moonKelvin;
+				progManager.light_sun_color.set3f(colorTemperatures.getLinearR(kelvin) * scene.moonBrightness * 0.1f, colorTemperatures.getLinearG(kelvin) * scene.moonBrightness * 0.1f, colorTemperatures.getLinearB(kelvin) * scene.moonBrightness * 0.1f);
+			}
 			
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 		}
