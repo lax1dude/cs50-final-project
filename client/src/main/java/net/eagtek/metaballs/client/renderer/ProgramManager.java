@@ -196,9 +196,18 @@ public class ProgramManager {
 	public EaglUniform lens_flare_single_occlusion_position;
 	public EaglUniform lens_flare_single_occlusion_size;
 	
-	public EaglProgram moon;
-	public EaglUniform moon_moonColor;
-	public EaglUniform moon_moonTexXY;
+	public EaglProgram moon_day;
+	public EaglUniform moon_day_moonColor;
+	public EaglUniform moon_day_moonTexXY;
+	
+	public EaglProgram moon_night;
+	public EaglUniform moon_night_moonColor;
+	public EaglUniform moon_night_moonTexXY;
+	public EaglUniform moon_night_cloudColor;
+	public EaglUniform moon_night_cloudTextureBlend;
+	
+	public EaglProgram dither_blend;
+	public EaglUniform dither_blend_screenSizeInv;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -624,14 +633,36 @@ public class ProgramManager {
 		lens_flare_single_occlusion_position = lens_flare_single_occlusion.getUniform("position");
 		lens_flare_single_occlusion_size = lens_flare_single_occlusion.getUniform("size");
 		
-		source = ResourceLoader.loadResourceString("metaballs/shaders/moon.glsl");
-		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "moon.vsh");
-		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "moon.fsh");
-		this.moon = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		source = ResourceLoader.loadResourceString("metaballs/shaders/moon_day.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "moon_day.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "moon_day.fsh");
+		this.moon_day = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 		
-		moon.getUniform("tex").set1i(0);
-		moon_moonColor = moon.getUniform("moonColor");
-		moon_moonTexXY = moon.getUniform("moonTexXY");
+		moon_day.getUniform("tex").set1i(0);
+		moon_day_moonColor = moon_day.getUniform("moonColor");
+		moon_day_moonTexXY = moon_day.getUniform("moonTexXY");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/moon_night.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "moon_night.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "moon_night.fsh");
+		this.moon_night = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		moon_night.getUniform("tex").set1i(0);
+		moon_night.getUniform("cloudTextureA").set1i(1);
+		moon_night.getUniform("cloudTextureB").set1i(2);
+		moon_night_moonColor = moon_night.getUniform("moonColor");
+		moon_night_moonTexXY = moon_night.getUniform("moonTexXY");
+		moon_night_cloudTextureBlend = moon_night.getUniform("cloudTextureBlend");
+		moon_night_cloudColor = moon_night.getUniform("cloudColor");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/dither_blend.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "dither_blend.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "dither_blend.fsh");
+		this.dither_blend = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		dither_blend.getUniform("tex").set1i(0);
+		dither_blend.getUniform("diffuse").set1i(1);
+		dither_blend_screenSizeInv = dither_blend.getUniform("screenSizeInv");
 		
 	}
 	
@@ -679,7 +710,9 @@ public class ProgramManager {
 		lens_flare_occlusion.destroy();
 		lens_flare_single.destroy();
 		lens_flare_single_occlusion.destroy();
-		moon.destroy();
+		moon_day.destroy();
+		moon_night.destroy();
+		dither_blend.destroy();
 	}
 
 }

@@ -4,6 +4,8 @@ import static org.lwjgl.opengles.GLES31.*;
 
 import java.io.InputStream;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Random;
@@ -91,6 +93,8 @@ public class GlobalRenderer {
 	private final EaglFramebuffer postBufferB;
 	private final EaglFramebuffer postBufferC;
 	private final EaglFramebuffer exposureCalcTexture;
+	
+	private final EaglFramebuffer opaqueDepthBuffer;
 
 	private final EaglFramebuffer toneMapped;
 	
@@ -125,6 +129,9 @@ public class GlobalRenderer {
 	
 	public final int[] queryObjectPool = new int[2048];
 	private int queryObject = 0;
+
+	private ArrayList<ObjectRenderer> sortedObjectRenderers = new ArrayList();
+	private ArrayList<ObjectRenderer> sortedObjectRenderersWithTransparency = new ArrayList();
 	
 	public int getQuery() {
 		if(queryObject >= queryObjectPool.length) queryObject = 0;
@@ -216,7 +223,7 @@ public class GlobalRenderer {
 			stream.close();
 			
 			for(int i = 0 ; i < 10; ++i) {
-				ModelObjectRenderer m = new ModelObjectRenderer(testSphere, 0, ModelObjectRenderer.passes_all_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.2f, 0.05f, 0.5f, 0.0f);
+				ModelObjectRenderer m = new ModelObjectRenderer(testSphere, 0, ModelObjectRenderer.passes_all_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, rand.nextBoolean() ? 0.0f : 0.75f, 1.0f, 0.2f, 0.05f, 1.0f, 0.0f);
 				m.setPosition(rand.nextFloat() * 40.0d - 20.0d, rand.nextFloat() * 0.5d + 0.5d, rand.nextFloat() * 40.0d - 20.0d);
 				client.getScene().objectRenderers.add(m);
 			}
@@ -246,7 +253,7 @@ public class GlobalRenderer {
 		// 2 - normalXYZ, emission
 		// 3 - position
 
-		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8, GL_RGB16F);
+		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8);
 		lightBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB16F, GL_RGB16F);
 
 		combinedBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB16F);
@@ -272,6 +279,8 @@ public class GlobalRenderer {
 		lightBulbRenderer = new RenderLightBulbs(this);
 		lensFlareRenderer = new RenderLensFlares(this);
 		
+		opaqueDepthBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE);
+		
 		//glGenQueries(queryObjectPool);
 	}
 
@@ -291,30 +300,75 @@ public class GlobalRenderer {
 		
 		Vector3f sd = scene.sunDirection;
 		sd.set(0.0f, 1.0f, 0.0f);
-		//sd.rotateZ(20.0f * MathUtil.toRadians);
 		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
-		sd.rotateY(20.0f * MathUtil.toRadians);
+		sd.rotateY(23.5f * MathUtil.toRadians);
+		
+		float timeOfDay = Math.max(sd.y, 0.0f);
 		
 		sd = scene.moonDirection;
-		sd.set(0.0f, 1.0f, 0.0f);
-		//sd.rotateZ(20.0f * MathUtil.toRadians);
+		sd.set(0.0f, -1.0f, 0.0f);
+		sd.rotateZ(((scene.time / 24000.0f / 27.0f * 360.0f) % 360.0f) * MathUtil.toRadians);
+		sd.rotateY(5.0f * MathUtil.toRadians);
 		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
-		
-		float timeOfDay = Math.max(sd.dot(0.0f, 1.0f, 0.0f), 0.0f);
+		sd.rotateY(18.5f * MathUtil.toRadians);
 		
 		scene.skyBrightness = scene.enableSun ? timeOfDay * 2.0f : 0.0f;
 		scene.sunBrightness = scene.enableSun ? 200.0f : 0.0f;
 		
 		scene.sunSize = 0.15f;
 		
-		scene.sunKelvin = (int) lerp(1500.0f, 3500.0f, Math.min(timeOfDay, 1.0f));
+		scene.sunKelvin = (int) lerp(1500.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
 		
 		scene.fogKelvin = 6000;
 		
 		scene.fogDensity = 0.005f;
 		
+		
 		int w = displayW = client.context.getInnerWidth();
 		int h = displayH = client.context.getInnerHeight();
+		
+		// ================================================ SORT OBJECT RENDERERS =====================================================
+		
+		sortedObjectRenderers.clear();
+		sortedObjectRenderersWithTransparency.clear();
+		
+		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
+		while(objectRenderers.hasNext()) {
+			ObjectRenderer r = objectRenderers.next();
+			if(r.shouldRenderPass(RenderPass.TRANSPARENT)) {
+				sortedObjectRenderersWithTransparency.add(r);
+			}else {
+				sortedObjectRenderers.add(r);
+			}
+		}
+		
+		sortedObjectRenderers.sort(new Comparator<ObjectRenderer>() {
+			@Override
+			public int compare(ObjectRenderer o1, ObjectRenderer o2) {
+				float o1X = (float) (o1.posX - renderPosX);
+				float o1Y = (float) (o1.posY - renderPosY);
+				float o1Z = (float) (o1.posZ - renderPosZ);
+				float o2X = (float) (o2.posX - renderPosX);
+				float o2Y = (float) (o2.posY - renderPosY);
+				float o2Z = (float) (o2.posZ - renderPosZ);
+				return (o1X*o1X + o1Y*o1Y + o1Z*o1Z > o2X*o2X + o2Y*o2Y + o2Z*o2Z) ? 1 : -1;
+			}
+		});
+		
+		sortedObjectRenderersWithTransparency.sort(new Comparator<ObjectRenderer>() {
+			@Override
+			public int compare(ObjectRenderer o1, ObjectRenderer o2) {
+				float o1X = (float) (o1.posX - renderPosX);
+				float o1Y = (float) (o1.posY - renderPosY);
+				float o1Z = (float) (o1.posZ - renderPosZ);
+				float o2X = (float) (o2.posX - renderPosX);
+				float o2Y = (float) (o2.posY - renderPosY);
+				float o2Z = (float) (o2.posZ - renderPosZ);
+				return (o1X*o1X + o1Y*o1Y + o1Z*o1Z > o2X*o2X + o2Y*o2Y + o2Z*o2Z) ? -1 : 1;
+			}
+		});
+		
+		sortedObjectRenderers.addAll(0, sortedObjectRenderersWithTransparency);
 		
 		// ================================================= RENDER THE G BUFFER =======================================================
 		
@@ -361,7 +415,7 @@ public class GlobalRenderer {
 		bananaRenderer2.setMaterial(0.0f, 0.0f, 0.6f, 0.2f, 0.0f, 0.0f);
 		bananaRenderer2.setPosition(-22.0d, 4.0d, 13.0d).setRotation(150.0f, -160.0f, -75.0f).setScale(5.0f);
 		
-		Iterator<ObjectRenderer> objectRenderers = scene.objectRenderers.iterator();
+		objectRenderers = sortedObjectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
 			if(r.shouldRenderPass(RenderPass.G_BUFFER)) {
@@ -374,7 +428,15 @@ public class GlobalRenderer {
 		glDepthFunc(GL_GREATER);
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
+		
+		// =================================================== COPY DEPTH BUFFER ==========================================================
+		
+		opaqueDepthBuffer.setSize(w, h);
 
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer.glObject);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, opaqueDepthBuffer.glObject);
+		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
+		
 		// ================================================= RENDER SUN SHADOW MAPS =======================================================
 		
 		sunShadowMap.setSize(GameConfiguration.sunShadowMapResolution * 4, GameConfiguration.sunShadowMapResolution);
@@ -408,7 +470,7 @@ public class GlobalRenderer {
 		viewProjFustrum.set(viewProjMatrix);
 
 		if(scene.enableSun) {
-			objectRenderers = scene.objectRenderers.iterator();
+			objectRenderers = sortedObjectRenderers.iterator();
 			while(objectRenderers.hasNext()) {
 				ObjectRenderer r = objectRenderers.next();
 				if(r.shouldRenderPass(RenderPass.SHADOW_A)) {
@@ -432,7 +494,7 @@ public class GlobalRenderer {
 		viewProjFustrum.set(viewProjMatrix);
 		
 		if(scene.enableSun) {
-			objectRenderers = scene.objectRenderers.iterator();
+			objectRenderers = sortedObjectRenderers.iterator();
 			while(objectRenderers.hasNext()) {
 				ObjectRenderer r = objectRenderers.next();
 				if(r.shouldRenderPass(RenderPass.SHADOW_B)) {
@@ -456,7 +518,7 @@ public class GlobalRenderer {
 		viewProjFustrum.set(viewProjMatrix);
 		
 		if(scene.enableSun) {
-			objectRenderers = scene.objectRenderers.iterator();
+			objectRenderers = sortedObjectRenderers.iterator();
 			while(objectRenderers.hasNext()) {
 				ObjectRenderer r = objectRenderers.next();
 				if(r.shouldRenderPass(RenderPass.SHADOW_C)) {
@@ -480,7 +542,7 @@ public class GlobalRenderer {
 		viewProjFustrum.set(viewProjMatrix);
 		
 		if(scene.enableSun) {
-			objectRenderers = scene.objectRenderers.iterator();
+			objectRenderers = sortedObjectRenderers.iterator();
 			while(objectRenderers.hasNext()) {
 				ObjectRenderer r = objectRenderers.next();
 				if(r.shouldRenderPass(RenderPass.SHADOW_D)) {
@@ -615,7 +677,7 @@ public class GlobalRenderer {
 			updateMatrix(progManager.sunshadow_generate);
 			
 			gBuffer.bindColorTexture(2, 0);
-			gBuffer.bindColorTexture(3, 1);
+			opaqueDepthBuffer.bindDepthTexture(1);
 			sunShadowMap.bindDepthTexture(2);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 		}
@@ -639,7 +701,7 @@ public class GlobalRenderer {
 		
 		progManager.linearize_depth.use();
 		progManager.linearize_depth_farPlane.set1f(GameConfiguration.farPlane);
-		gBuffer.bindDepthTexture();
+		opaqueDepthBuffer.bindDepthTexture();
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		if(GameConfiguration.enableAmbientOcclusion) {
@@ -716,7 +778,7 @@ public class GlobalRenderer {
 		
 		gBuffer.bindColorTexture(1, 0);
 		gBuffer.bindColorTexture(2, 1);
-		gBuffer.bindColorTexture(3, 2);
+		opaqueDepthBuffer.bindDepthTexture(2);
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_FRONT);
@@ -904,7 +966,7 @@ public class GlobalRenderer {
 		gBuffer.bindColorTexture(0, 0);
 		gBuffer.bindColorTexture(1, 1);
 		gBuffer.bindColorTexture(2, 2);
-		gBuffer.bindColorTexture(3, 3);
+		opaqueDepthBuffer.bindDepthTexture(3);
 		lightBuffer.bindColorTexture(0, 4);
 		lightBuffer.bindColorTexture(1, 5);
 		ambientOcclusionBuffer.bindColorTexture(0, 6);
@@ -960,7 +1022,7 @@ public class GlobalRenderer {
 			*/
 			progManager.position_to_view.use();
 			updateMatrix(progManager.position_to_view);
-			gBuffer.bindColorTexture(3, 0);
+			opaqueDepthBuffer.bindDepthTexture(3);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			
 			// ================================================= RENDER LIGHT SHAFT MAP =======================================================
@@ -978,7 +1040,7 @@ public class GlobalRenderer {
 			updateMatrix(progManager.light_shaft_generate);
 			postBufferA.bindColorTexture(0, 0);
 			sunShadowMap.bindDepthTexture(1);
-			gBuffer.bindColorTexture(3, 2);
+			opaqueDepthBuffer.bindDepthTexture(2);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 		}
 /*
@@ -1024,6 +1086,7 @@ public class GlobalRenderer {
 		
 		progManager.blend_atmosphere.use();
 		progManager.blend_atmosphere_invTextureSize.set2f(2.0f / ((w / 2) * 2), 2.0f / ((h / 2) * 2));
+		updateMatrix(progManager.blend_atmosphere);
 
 		kelvin = scene.fogKelvin;
 		float fogR = colorTemperatures.getLinearR(kelvin);
@@ -1042,7 +1105,7 @@ public class GlobalRenderer {
 		
 		progManager.blend_atmosphere_enableLightShafts.set1i((GameConfiguration.enableSunlightVolumetric && scene.lightShafts) ? 1 : 0);
 		progManager.blend_atmosphere_fogDensity.set1f(scene.fogDensity);
-		gBuffer.bindColorTexture(3, 0);
+		opaqueDepthBuffer.bindDepthTexture(0);
 		ambientOcclusionBuffer.bindColorTexture(0, 1);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 
@@ -1052,30 +1115,56 @@ public class GlobalRenderer {
 		glDisable(GL_BLEND);
 		glDisable(GL_STENCIL_TEST);
 		
+		projMatrix.pushMatrix().identity();
+		cameraMatrix.pushMatrix().identity();
+		viewProjMatrix.pushMatrix().identity();
+		modelMatrix.pushMatrix().identity();
+		
+		// ============================================ DITHER BLEND ==================================================
+
+		postBufferA.setSize(w, h);
+		postBufferA.bindFramebuffer();
+		glViewport(0, 0, w, h);
+		
+		progManager.dither_blend.use();
+		progManager.dither_blend_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+		combinedBuffer.bindColorTexture(0, 0);
+		gBuffer.bindColorTexture(0, 1);
+		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
 		// ============================================ RENDER LENS FLARES ==================================================
 
 		
-		combinedBuffer.setDepthAttached(false);
+		combinedBuffer.bindFramebuffer();
+		glViewport(0, 0, w, h);
 		
+		progManager.p3f2f_texture.use();
+		updateMatrix(progManager.p3f2f_texture);
+		postBufferA.bindColorTexture(0);
+		quadArray.draw(GL_TRIANGLES, 0, 6);                 // copy dither-blended framebuffer back to main
+		
+		projMatrix.popMatrix();
+		cameraMatrix.popMatrix();
+		viewProjMatrix.popMatrix();
+		modelMatrix.popMatrix();
 		if(scene.enableSun) {
 			lensFlareRenderer.xPixelsInv = 1.0f;
 			lensFlareRenderer.yPixelsInv = (float)w / (float)h;
 			
-			gBuffer.bindDepthTexture(0);
+			opaqueDepthBuffer.bindDepthTexture(0);
 			cloudMapGenerator.bindTextureA(1);
 			cloudMapGenerator.bindTextureB(2);
 			lensFlareRenderer.processOcclusion(scene);
-			
-			combinedBuffer.bindFramebuffer();
-			glViewport(0, 0, w, h);
 
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_ONE, GL_ONE);
 			
-			lensFlareRenderer.render(scene);
+			combinedBuffer.bindFramebuffer();
+			glViewport(0, 0, w, h);
 			
+			lensFlareRenderer.render(scene);
 		}
-		
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
 		
@@ -1083,16 +1172,15 @@ public class GlobalRenderer {
 		while(lightRenderers.hasNext()) {
 			lensFlareRenderer.renderLightFlare(lightRenderers.next());
 		}
-		combinedBuffer.setDepthAttached(true);
 		
 		glDisable(GL_BLEND);
-		
-		// ================================================= DOWNSCALE =======================================================
-		
+
 		projMatrix.identity();
 		cameraMatrix.identity();
 		viewProjMatrix.identity();
 		modelMatrix.clear();
+		
+		// ================================================= DOWNSCALE =======================================================
 		
 		postBufferA.setSize(w, h);
 		postBufferA.bindFramebuffer();
@@ -1362,6 +1450,7 @@ public class GlobalRenderer {
 			float scale = 10.0f;
 			progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 			
+			scale = (float)Math.sqrt(Math.max(scene.sunDirection.y, 0.0f) + 0.01f) * 9.0f;
 			kelvin = (int) lerp(scene.sunKelvin + 2000, 6000, Math.max(1.0f - scene.sunDirection.y, 0.0f));
 			progManager.sky_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 			
@@ -1385,33 +1474,47 @@ public class GlobalRenderer {
 				skyDomeSmall.drawAll(GL_TRIANGLES);
 			}else {
 				skyDome.drawAll(GL_TRIANGLES);
+				
+				modelMatrix.pushMatrix();
+				
+				glEnable(GL_BLEND);
+				modelMatrix.rotateTowards(scene.moonDirection.x, scene.moonDirection.y, scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
+				modelMatrix.translate(0.0f, 0.0f, 15.0f);
+				
+				if(scene.sunDirection.y > -0.1f) {
+					
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+					
+					moonsTexture.bind(0);
+					progManager.moon_day.use();
+					progManager.moon_day_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
+					int moonFace = ((scene.time / 30000) + 12) % 24;
+					progManager.moon_day_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
+					updateMatrix(progManager.moon_day);
+					quadArray.draw(GL_TRIANGLES, 0, 6);
+					
+				}else {
+					
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+					
+					moonsTexture.bind(0);
+					cloudMapGenerator.bindTextureA(1);
+					cloudMapGenerator.bindTextureB(2);
+					progManager.moon_night.use();
+					progManager.moon_night_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
+					int moonFace = ((scene.time / 30000) + 12) % 24;
+					progManager.moon_night_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
+					progManager.moon_night_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
+					progManager.moon_night_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
+					updateMatrix(progManager.moon_night);
+					quadArray.draw(GL_TRIANGLES, 0, 6);
+					
+				}
+				
+				glDisable(GL_BLEND);
+				
+				modelMatrix.popMatrix();
 			}
-			
-			moonsTexture.bind(0);
-			progManager.moon.use();
-			progManager.moon_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
-			
-			int moonFace = ((scene.time / 30000) + 12) % 24;
-			progManager.moon_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
-			
-			modelMatrix.pushMatrix();
-			
-			glEnable(GL_BLEND);
-			if(scene.sunDirection.y > 0.0f) {
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-			}else {
-				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			}
-			
-			modelMatrix.rotateTowards(scene.moonDirection.x, scene.moonDirection.y, scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
-			modelMatrix.translate(0.0f, 0.0f, 15.0f);
-			updateMatrix(progManager.moon);
-			
-			quadArray.draw(GL_TRIANGLES, 0, 6);
-			
-			glDisable(GL_BLEND);
-			
-			modelMatrix.popMatrix();
 			
 			glDisable(GL_STENCIL_TEST);
 		}

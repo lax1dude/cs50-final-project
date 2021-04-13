@@ -30,6 +30,15 @@ uniform float emission;
 uniform vec2 screenSize;
 uniform float size;
 
+uniform mat4 matrix_v_inv;
+uniform mat4 matrix_p_inv;
+
+vec3 getPosition(sampler2D dt, vec2 coord) {
+	float depth = texture(dt, coord).r;
+	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
+}
+
 void main() {
 	vec4 diffuseV;
 	vec4 materialV;
@@ -40,7 +49,7 @@ void main() {
 	vec2 v_texCoord = gl_FragCoord.xy / screenSize;
 	
 	normalV = texture(normal, v_texCoord);
-	positionV = texture(position, v_texCoord).rgb;
+	positionV = getPosition(position, v_texCoord);
 	normalC = normalize(normalV.xyz * 2.0 - 1.0);
 	
 	vec3 L = normalize(lightPosition - positionV);

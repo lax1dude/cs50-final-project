@@ -104,18 +104,18 @@ class RenderLensFlares {
 	private float sunB = 0.0f;
 	
 	private void placeFlare(int style, float dist, float size, float r, float g, float b, float a, float rotation) {
-		float exposureModifier = 1.0f - (0.3f / renderer.exposure);
+		float exposureModifier = 1.0f - (0.17f / renderer.exposure);
 		if(exposureModifier < 0.2f) exposureModifier = 0.2f;
 		if(exposureModifier > 1.0f) exposureModifier = 1.0f;
-		pushQuad(sunClipX - sunClipX * dist, sunClipY - sunClipY * dist, size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, 0.0f, g * sunG, b * sunB, a, rotation + exposureModifier * 120.0f);
+		pushQuad(sunClipX - sunClipX * dist, sunClipY - sunClipY * dist, size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, 0.0f, g * sunG, b * sunB, a, rotation + exposureModifier * 150.0f);
 		pushQuad(sunClipX - sunClipX * (dist + 0.015f), sunClipY - sunClipY * (dist + 0.015f), size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, r * sunR, 0.0f, 0.0f, a, rotation + exposureModifier * 120.0f);
 	}
 	
 	private void placeFlareNoAbberation(int style, float dist, float size, float r, float g, float b, float a, float rotation) {
-		float exposureModifier = 1.0f - (0.3f / renderer.exposure);
+		float exposureModifier = 1.0f - (0.17f / renderer.exposure);
 		if(exposureModifier < 0.2f) exposureModifier = 0.2f;
 		if(exposureModifier > 1.0f) exposureModifier = 1.0f;
-		pushQuad(sunClipX - sunClipX * dist, sunClipY - sunClipY * dist, size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, r * sunR, g * sunG, b * sunB, a, rotation + exposureModifier * 120.0f);
+		pushQuad(sunClipX - sunClipX * dist, sunClipY - sunClipY * dist, size * exposureModifier, size * exposureModifier, 128 * style, 128, 128, 128, r * sunR, g * sunG, b * sunB, a, rotation + exposureModifier * 150.0f);
 	}
 	
 	private final Random rand = new Random();
@@ -124,9 +124,9 @@ class RenderLensFlares {
 		
 		float intensityF = (float)Math.sqrt(Math.max(scene.sunDirection.y + 0.1f, 0.0f));
 		if(intensityF > 0.0f) {
-			transformationVector.x = scene.sunDirection.x * 100.0f;
-			transformationVector.y = scene.sunDirection.y * 100.0f;
-			transformationVector.z = scene.sunDirection.z * 100.0f;
+			transformationVector.x = scene.sunDirection.x;
+			transformationVector.y = scene.sunDirection.y;
+			transformationVector.z = scene.sunDirection.z;
 			transformationVector.w = 1.0f;
 			
 			renderer.viewProjMatrix.transform(transformationVector);
@@ -172,9 +172,9 @@ class RenderLensFlares {
 					boolean tex2 = rand.nextBoolean();
 					pushQuad(x, y, 0.4f, 0.5f * (float)(Math.sin((i * (360.0f / 8.0f) - 90.0f) * MathUtil.toRadians) + 2.0d), 0, (tex2 ? 1 : 49), 512, 48, r, g, b, streakIntensity * 0.1f, i * (360.0f / 16.0f));
 				}
-
+				
 				placeFlare(1, 0.2f, 0.1f,  0.5f, 0.9f, 0.2f,  0.2f, 0.0f);
-
+				
 				placeFlare(1, 0.3f, 0.1f,  0.5f, 0.9f, 0.2f,  0.2f, 0.0f);
 				placeFlare(1, 0.35f, 0.15f,  0.5f, 0.9f, 0.7f,  0.2f, 0.0f);
 				placeFlareNoAbberation(2, 0.4f, 0.4f,  0.3f, 0.9f, 0.7f,  0.05f, 0.0f);
@@ -194,17 +194,15 @@ class RenderLensFlares {
 				placeFlare(2, 1.45f, 0.3f,  0.3f, 0.7f, 0.2f,  0.02f, 0.0f);
 				placeFlare(2, 1.55f, 0.1f,  0.3f, 0.7f, 0.7f,  0.05f, 0.0f);
 				placeFlare(0, 1.59f, 0.1f,  0.5f, 0.7f, 0.5f,  0.15f, 0.0f);
-
 				placeFlare(2, 2.0f, 0.3f,  0.3f, 0.7f, 0.2f,  0.05f, 0.0f);
 				placeFlare(1, 1.98f, 0.2f,  0.3f, 0.7f, 0.2f,  0.05f, 0.0f);
 				placeFlare(1, 2.02f, 0.2f,  0.3f, 0.7f, 0.2f,  0.05f, 0.0f);
-				
 				
 				tessellator.uploadVertexes(vertexBuffer, false);
 				tessellator.uploadIndexes(indexBuffer, false);
 				
 				renderer.progManager.lens_flare.use();
-				renderer.progManager.lens_flare_intensity.set1f(0.1f * scene.sunBrightness * intensityF);
+				renderer.progManager.lens_flare_intensity.set1f(0.05f * scene.sunBrightness * intensityF);
 				lensFlareTextures.bind(0);
 				sunOcclusionTest.bindColorTexture(0, 1);
 				vertexArray.drawAll(GL_TRIANGLES);

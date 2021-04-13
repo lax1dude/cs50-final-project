@@ -29,8 +29,17 @@ uniform float fogDensity;
 
 uniform int enableLightShafts;
 
+uniform mat4 matrix_v_inv;
+uniform mat4 matrix_p_inv;
+
+vec3 getPosition(sampler2D dt, vec2 coord) {
+	float depth = texture(dt, coord).r;
+	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
+}
+
 void main() {
-	float dist0 = length(texture(positionTex, texCoord).xyz);
+	float dist0 = length(getPosition(positionTex, texCoord));
 	float dist = max(dist0 - 30.0, 0.0);
 	float shaft = 0.0;
 	if(enableLightShafts == 1) shaft = pow(max(30.0 - dist0, 0.0) / 10.0, 2.0) * texture(lightShaftTex, texCoord).r;

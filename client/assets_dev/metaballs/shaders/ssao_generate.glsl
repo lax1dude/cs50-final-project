@@ -72,7 +72,7 @@ void main() {
 			occlusion += (sampleDepth >= samplePos.z ? 1.0 : 0.0) * rangeCheck;    
 		}
 		
-		fragOut = 1.0;//1.0 - (occlusion / max(divisor, 0.001));
+		fragOut = 1.0 - (occlusion / max(divisor, 0.001));
 	}else {
     	fragOut = 1.0;
 	}

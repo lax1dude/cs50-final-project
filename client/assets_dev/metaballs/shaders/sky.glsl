@@ -8,7 +8,6 @@ out vec3 colorv;
 out vec3 normalv;
 
 uniform mat4 matrix_mvp;
-uniform mat4 matrix_m_invtrans;
 
 uniform lowp vec3 sunDirection;
 
@@ -17,7 +16,7 @@ uniform float altitude;
 //include dependencies/glsl-atmosphere.glsl
 
 void main() {
-	normalv = normalize((normIn.xyz * mat3(matrix_m_invtrans)).xyz);
+	normalv = -posIn;//(normIn.xyz * mat3(matrix_m_invtrans)).xyz);
     gl_Position = matrix_mvp * vec4(posIn, 1.0);
 	colorv = atmosphere(
         -normalv,                       // normalized ray direction
@@ -95,7 +94,7 @@ void main() {
     fragOut = mix(
 		colorv +
 		sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0)) +
-		cloudColor * (cloudMapSample * clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)) +
+		cloudColor * (cloudMapSample /* clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)*/) +
 		pow(texture(starsTexture, clipSpaceFromDir360(TBN * -normal) * 0.5 + 0.5).rgb, vec3(4.0)) * 0.5 * riseFac,
 		vec3(0.0),
 		darkness * 0.9

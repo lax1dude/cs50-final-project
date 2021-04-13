@@ -73,8 +73,14 @@ float calcSmoothShadow(mat4 pmatrix, float pmap, vec3 pnormal, vec3 ppos, float 
 	return max(accum * 2.0 - 1.0, 0.0);
 }
 
+vec3 getPosition(sampler2D dt, vec2 coord) {
+	float depth = texture(dt, coord).r;
+	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
+}
+
 void main() {
-	vec4 pos = vec4(texture(position, v_texCoord).rgb, 1.0);
+	vec4 pos = vec4(getPosition(position, v_texCoord), 1.0);
 	vec3 normalC = normalize(texture(normal, v_texCoord).xyz * 2.0 - 1.0);
 	
 	vec4 shadowPos = shadowMatrixA * pos;

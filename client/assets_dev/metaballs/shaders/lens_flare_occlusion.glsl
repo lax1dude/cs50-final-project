@@ -44,7 +44,7 @@ float sampleDirection(vec3 dir) {
 	if(depth == 1.0) {
 		vec2 cloudMapPos = clipSpaceFromDir(dir) * 0.5 + 0.5;
 		float cloudMapSample = mix(texture(cloudTextureA, cloudMapPos).r, texture(cloudTextureB, cloudMapPos).r, cloudTextureBlend);
-		float darkness = pow(cloudMapSample * 0.2, 4.0);
+		float darkness = pow(cloudMapSample * 0.15, 4.0);
 		darkness /= darkness + 2.0;
 		return 1.0 - clamp(darkness, 0.0, 1.0);
 	}else {

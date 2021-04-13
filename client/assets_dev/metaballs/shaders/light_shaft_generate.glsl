@@ -20,7 +20,6 @@ in vec2 texCoord;
 layout(location = 0) out float fragOut;
 
 uniform sampler2D positionTex;
-uniform sampler2D positionTex2;
 
 uniform sampler2D shadowMap;
 

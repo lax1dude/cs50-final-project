@@ -45,6 +45,15 @@ uniform sampler2D irradianceMapB;
 
 uniform float irradianceMapBlend;
 
+uniform mat4 matrix_v_inv;
+uniform mat4 matrix_p_inv;
+
+vec3 getPosition(sampler2D dt, vec2 coord) {
+	float depth = texture(dt, coord).r;
+	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
+}
+
 float invPI = 0.318309886;
 vec2 clipSpaceFromDir(vec3 dir) {
     return vec2(
@@ -63,7 +72,7 @@ void main() {
 	diffuseV = texture(diffuse, v_texCoord);
 	materialV = texture(material, v_texCoord);
 	normalV = texture(normal, v_texCoord);
-	positionV = texture(position, v_texCoord).rgb;
+	positionV = getPosition(position, v_texCoord);
 	lightDiffuseV = texture(lightDiffuse, v_texCoord).rgb;
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
@@ -71,7 +80,7 @@ void main() {
 	vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
 	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (materialV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
+	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
 	fragOut = vec4(mix(color, cubemap * 0.5 + lightSpecularV, materialV.a), 1.0);
 }
 
