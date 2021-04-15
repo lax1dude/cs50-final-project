@@ -87,16 +87,16 @@ class CubemapGenerator {
 	
 	public void updateIrradianceTexture() {
 		if(irradianceB) {
-			this.irradianceMapB.setSize(64, 64);
+			this.irradianceMapB.setSize(128, 64);
 			this.irradianceMapB.bindFramebuffer();
 			irradianceB = false;
 		}else {
-			this.irradianceMapA.setSize(64, 64);
+			this.irradianceMapA.setSize(128, 64);
 			this.irradianceMapA.bindFramebuffer();
 			irradianceB = true;
 		}
 
-		glViewport(0, 0, 64, 64);
+		glViewport(0, 0, 128, 64);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);

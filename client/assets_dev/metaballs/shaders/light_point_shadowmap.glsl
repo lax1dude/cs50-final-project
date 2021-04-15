@@ -43,6 +43,22 @@ vec3 getPosition(sampler2D dt, vec2 coord) {
 	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
 }
 
+bool isInTexture(vec3 pos) {
+	return pos.x >= 0.0 && pos.x <= 1.0 && pos.y >= 0.0 && pos.y <= 1.0 && pos.z >= 0.0 && pos.z <= 1.0;
+}
+
+mat4 rotationMatrix(vec3 axis, float angle) {
+    axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    
+    return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                0.0,                                0.0,                                0.0,                                1.0);
+}
+
 void main() {
 	vec4 diffuseV;
 	vec4 materialV;
@@ -51,40 +67,71 @@ void main() {
 	vec3 normalC;
 	
 	vec2 v_texCoord = gl_FragCoord.xy / screenSize;
-	
-	materialV = texture(material, v_texCoord);
-	normalV = texture(normal, v_texCoord);
 	positionV = getPosition(position, v_texCoord);
-	normalC = normalize(normalV.xyz * 2.0 - 1.0);
 	
-	vec3 V = normalize(-positionV);
+	vec4 shadowPos = shadowMatrix * vec4(positionV - lightPosition, 1.0);
+	shadowPos.xyz /= shadowPos.w;
+	shadowPos.xyz *= 0.5; shadowPos.xyz += 0.5;
 	
-	vec3 F0 = vec3(0.04);
-	F0 = mix(F0, vec3(1.0), materialV.r);
+	float shadow; 
+	if(!isInTexture(shadowPos.xyz)) {
+		shadow = 1.0;
+	}else {
+		vec2 xy = vec2(mod(shadowMapIndex, 8.0) / 8.0, (floor(shadowMapIndex / 8.0)) / 8.0);
+		
+		float accum = 0.0;
+		float sampleWeight = 1.0 / 15.0;
 	
-	vec3 L = normalize(lightPosition - positionV);
-	vec3 H = normalize(V + L);
+		vec4 rotate90 = rotationMatrix(vec3(1.0,0.0,0.0), 90.0 * 0.017453293) * vec4(normalC, 1.0);
+		
+		for(float i = 0.0; i < 15.0; ++i) {
+			vec4 rot = rotationMatrix(normalC, i * (360.0 / 7.0) * 0.017453293) * rotate90;
+			vec4 sampleLoc = shadowMatrix * vec4((positionV.xyz - lightPosition) + rot.xyz * (i < 7.0 ? 0.007 : 0.014) * min(size, 7.0), 1.0);
+			sampleLoc.xyz /= sampleLoc.w;
+			sampleLoc.xyz *= 0.5; sampleLoc.xyz += 0.5;
+			accum += (texture(shadowMap, clamp(sampleLoc.xy * vec2(0.16666, 0.16666) + xy, vec2(0.0001), vec2(0.9999))).r <= sampleLoc.z) ? sampleWeight : 0.0;
+		}
 	
-	float distance = length(lightPosition - positionV);
-    float attenuation = 1.0 / (distance * distance);
-    vec3 radiance = lightColor * max(attenuation * emission - 0.2, 0.0);
+		shadow = max(accum * 2.0 - 1.0, 0.0);
+	}	
 	
-	float roughness = materialV.g;
-	float NDF = DistributionGGX(normalC, H, roughness);   
-	float G   = GeometrySmith(normalC, V, L, roughness);      
-	vec3  F   = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
-	
-	vec3 kS = F;
-	vec3 kD = vec3(1.0) - kS;
-	kD *= 1.0 - materialV.r;
-	
-	vec3 nominator    = NDF * G * F; 
-	float denominator = 0.25 * max(dot(normalC, V), 0.0) * max(dot(normalC, L), 0.0);
-	vec3 specular = nominator / max(denominator, 0.001);
-	
-	float NdotL = max(dot(normalC, L), 0.0);
-	diffuseOut = radiance * (kD / PI * NdotL);// + vec3(0.05);
-	specularOut = radiance * specular * NdotL * materialV.b;
+	if(shadow > 0.01) {
+		materialV = texture(material, v_texCoord);
+		normalV = texture(normal, v_texCoord);
+		normalC = normalize(normalV.xyz * 2.0 - 1.0);
+		
+		vec3 V = normalize(-positionV);
+		
+		vec3 F0 = vec3(0.04);
+		F0 = mix(F0, vec3(1.0), materialV.r);
+		
+		vec3 L = normalize(lightPosition - positionV);
+		vec3 H = normalize(V + L);
+		
+		float distance = length(lightPosition - positionV);
+		float attenuation = 1.0 / (distance * distance);
+		vec3 radiance = lightColor * max(attenuation * emission - 0.2, 0.0);
+		
+		float roughness = materialV.g;
+		float NDF = DistributionGGX(normalC, H, roughness);   
+		float G   = GeometrySmith(normalC, V, L, roughness);      
+		vec3  F   = fresnelSchlick(clamp(dot(H, V), 0.0, 1.0), F0);
+		
+		vec3 kS = F;
+		vec3 kD = vec3(1.0) - kS;
+		kD *= 1.0 - materialV.r;
+		
+		vec3 nominator    = NDF * G * F; 
+		float denominator = 0.25 * max(dot(normalC, V), 0.0) * max(dot(normalC, L), 0.0);
+		vec3 specular = nominator / max(denominator, 0.001);
+		
+		float NdotL = max(dot(normalC, L), 0.0);
+		diffuseOut = radiance * (kD / PI * NdotL);
+		specularOut = radiance * specular * NdotL * materialV.b;
+	}else {
+		diffuseOut = vec3(0.0);
+		specularOut = vec3(0.0);
+	}
 }
 
 #endif

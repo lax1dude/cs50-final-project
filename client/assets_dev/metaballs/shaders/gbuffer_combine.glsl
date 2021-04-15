@@ -43,10 +43,15 @@ uniform samplerCube cubemap;
 uniform sampler2D irradianceMapA;
 uniform sampler2D irradianceMapB;
 
+uniform sampler2D ssrBuffer;
+
 uniform float irradianceMapBlend;
+uniform int enableSSR;
 
 uniform mat4 matrix_v_inv;
 uniform mat4 matrix_p_inv;
+
+uniform vec2 screenSizeInv;
 
 vec3 getPosition(sampler2D dt, vec2 coord) {
 	float depth = texture(dt, coord).r;
@@ -76,12 +81,23 @@ void main() {
 	lightDiffuseV = texture(lightDiffuse, v_texCoord).rgb;
 	lightSpecularV = texture(lightSpecular, v_texCoord).rgb;
 	normalC = normalV.xyz * 2.0 - 1.0;
+	vec4 reflection = vec4(0.0);
 	
-	vec3 cubemap = texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
+	if(materialV.a > 0.0) {
+		if(enableSSR != 0) {
+			reflection = texture(ssrBuffer, v_texCoord);
+			if(reflection.a < 1.0) {
+				reflection = vec4(reflection.rgb + texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb * (1.0 - reflection.a), 1.0);
+			}
+		}else {
+			reflection = vec4(texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb, 1.0);
+		}
+	}
+	
 	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2)) + lightSpecularV;
-	fragOut = vec4(mix(color, cubemap * 0.5 + lightSpecularV, materialV.a), 1.0);
+	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2));
+	fragOut = vec4(mix(color, reflection.rgb * 0.5, materialV.a * reflection.a) + lightSpecularV, 1.0);
 }
 
 #endif

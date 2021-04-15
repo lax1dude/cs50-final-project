@@ -33,6 +33,7 @@ public class ProgramManager {
 
 	public EaglProgram gbuffer_combined;
 	public EaglUniform gbuffer_combined_irradianceMapBlend;
+	public EaglUniform gbuffer_combined_enableSSR;
 
 	public EaglProgram light_sun;
 	public EaglUniform light_sun_color;
@@ -209,6 +210,8 @@ public class ProgramManager {
 	public EaglProgram dither_blend;
 	public EaglUniform dither_blend_screenSizeInv;
 	
+	public EaglProgram ssr_generate;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -266,8 +269,10 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("cubemap").set1i(7);
 		gbuffer_combined.getUniform("irradianceMapA").set1i(8);
 		gbuffer_combined.getUniform("irradianceMapB").set1i(9);
-		
+		gbuffer_combined.getUniform("ssrBuffer").set1i(10);
+
 		gbuffer_combined_irradianceMapBlend = gbuffer_combined.getUniform("irradianceMapBlend");
+		gbuffer_combined_enableSSR = gbuffer_combined.getUniform("enableSSR");
 		
 		source = ResourceLoader.loadResourceString("metaballs/shaders/light_sun.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "light_sun.vsh");
@@ -664,6 +669,16 @@ public class ProgramManager {
 		dither_blend.getUniform("diffuse").set1i(1);
 		dither_blend_screenSizeInv = dither_blend.getUniform("screenSizeInv");
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/ssr_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "ssr_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "ssr_generate.fsh");
+		this.ssr_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		ssr_generate.getUniform("material").set1i(0);
+		ssr_generate.getUniform("normal").set1i(1);
+		ssr_generate.getUniform("depth").set1i(2);
+		ssr_generate.getUniform("prevFrame").set1i(3);
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -713,6 +728,7 @@ public class ProgramManager {
 		moon_day.destroy();
 		moon_night.destroy();
 		dither_blend.destroy();
+		ssr_generate.destroy();
 	}
 
 }

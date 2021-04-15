@@ -39,6 +39,7 @@ public class GameConfiguration {
 	public static boolean enableBloom = true;
 	public static boolean enableSoftShadows = true;
 	public static boolean cloudsMoveWithPlayer = true;
+	public static boolean enableSSR = true;
 	
 	public static float farPlane = 2048.0f;
 	

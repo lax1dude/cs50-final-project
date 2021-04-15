@@ -73,6 +73,7 @@ public class GlobalRenderer {
 	private EaglVertexArray skyDome = null;
 	private EaglVertexArray skyDomeSmall = null;
 	private EaglVertexArray testSphere = null;
+	private EaglVertexArray testMirror = null;
 	
 	private ShadowLightRenderer lightTest = null;
 
@@ -93,6 +94,9 @@ public class GlobalRenderer {
 	private final EaglFramebuffer postBufferB;
 	private final EaglFramebuffer postBufferC;
 	private final EaglFramebuffer exposureCalcTexture;
+
+	private final EaglFramebuffer previousFrame;
+	private final EaglFramebuffer ssrBuffer;
 	
 	private final EaglFramebuffer opaqueDepthBuffer;
 
@@ -195,7 +199,7 @@ public class GlobalRenderer {
 			
 			stream = ResourceLoader.loadResource("metaballs/models/banana.mdl");
 			client.getScene().objectRenderers.add(bananaRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
-			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
+			client.getScene().objectRenderers.add(bananaRenderer2 = new ModelObjectRenderer(bananaRenderer.array, bananaTexture.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()));
 			stream.close();
 			
 			stream = ResourceLoader.loadResource("metaballs/models/lightcone.mdl");
@@ -227,6 +231,13 @@ public class GlobalRenderer {
 				m.setPosition(rand.nextFloat() * 40.0d - 20.0d, rand.nextFloat() * 0.5d + 0.5d, rand.nextFloat() * 40.0d - 20.0d);
 				client.getScene().objectRenderers.add(m);
 			}
+			
+			stream = ResourceLoader.loadResource("metaballs/models/mirror.mdl");
+			testMirror = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(testMirror, 0, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.01f, 1.0f, 1.0f, 0.0f).setPosition(4.0d, 0.1d, 8.0d).setRotation(0.0f, 180.0f, 0.0f));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(longArmsRenderer.array, longArmsRenderer.texture2D, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f).setPosition(4.0d, 0.15d, 8.0d).setScale(0.3f).setRotation(0.0f, 130.0f, 0.0f));
 			
 		}catch(Throwable tt) {
 			throw new RuntimeException("Could not load model files required for rendering", tt);
@@ -274,12 +285,15 @@ public class GlobalRenderer {
 		toneMapped = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB);
 		exposureCalcTexture = new EaglFramebuffer(DepthBufferType.NONE, GL_R32F);
 		
+		previousFrame = new EaglFramebuffer(DepthBufferType.NONE, GL_RGB16F);
+		
 		cloudMapGenerator = new CloudMapGenerator(this);
 		cubemapGenerator = new CubemapGenerator(this);
 		lightBulbRenderer = new RenderLightBulbs(this);
 		lensFlareRenderer = new RenderLensFlares(this);
 		
 		opaqueDepthBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE);
+		ssrBuffer = new EaglFramebuffer(DepthBufferType.NONE, GL_RGBA16F);
 		
 		//glGenQueries(queryObjectPool);
 	}
@@ -558,7 +572,7 @@ public class GlobalRenderer {
 		
 		// ================================================= RENDER LIGHT SHADOW MAPS =======================================================
 
-		lightShadowMap.setSize(GameConfiguration.lightShadowMapResolution * 6, GameConfiguration.lightShadowMapResolution * 6);
+		lightShadowMap.setSize(GameConfiguration.lightShadowMapResolution * 8, GameConfiguration.lightShadowMapResolution * 8);
 		lightShadowMap.bindFramebuffer();
 		
 		int atlasLocation = 0;
@@ -591,7 +605,7 @@ public class GlobalRenderer {
 			renderPosY = s.lightY;
 			renderPosZ = s.lightZ;
 			float lightRadius = (float)Math.sqrt(s.emission) * 2.0f;
-			if(viewProjFustrum.testSphere(x, y, z, lightRadius) && atlasLocation < 36) {
+			if(viewProjFustrum.testSphere(x, y, z, lightRadius) && atlasLocation < 64) {
 				s.objectsInFrustum = new LinkedList();
 				cameraMatrix.identity().lookAlong(s.direction, up);
 				projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(Math.min(s.spotRadius * MathUtil.toRadians * 2.25f, 50.0f * MathUtil.toRadians * 2.25f), 1.0f, 0.1f, lightRadius);
@@ -606,10 +620,11 @@ public class GlobalRenderer {
 						s.objectsInFrustum.add(r);
 					}
 				}
-				if(s.objectsInFrustum.size() > 0 && atlasLocation < 36) {
+				if(s.objectsInFrustum.size() > 0 && atlasLocation < 64) {
 					objectRenderers = s.objectsInFrustum.iterator();
 					boolean outOfSync = false;
 					if(rand.nextInt(60) == 0) {
+						s.objectHashState.clear();
 						outOfSync = true;
 					}else {
 						while(objectRenderers.hasNext()) {
@@ -623,8 +638,8 @@ public class GlobalRenderer {
 					}
 					if(outOfSync) {
 						s.atlasLocation = atlasLocation++;
-						int xx = s.atlasLocation % 6;
-						int yy = s.atlasLocation / 6;
+						int xx = s.atlasLocation % 8;
+						int yy = s.atlasLocation / 8;
 						glViewport(xx * GameConfiguration.lightShadowMapResolution, yy * GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution, GameConfiguration.lightShadowMapResolution);
 						
 						glEnable(GL_SCISSOR_TEST);
@@ -954,6 +969,29 @@ public class GlobalRenderer {
 		
 		glDisable(GL_BLEND);
 		glCullFace(GL_BACK);
+		
+		// =========================================== RENDER SCREEN SPACE REFLECTIONS ==============================================
+
+		ssrBuffer.setSize(w / 2, h / 2);
+		ssrBuffer.bindFramebuffer();
+		
+		glViewport(0, 0, w / 2, h / 2);
+		
+		if(GameConfiguration.enableSSR) {
+
+			gBuffer.bindColorTexture(1, 0);
+			gBuffer.bindColorTexture(2, 1);
+			gBuffer.bindDepthTexture(2);
+			combinedBuffer.bindColorTexture(0, 3);
+			progManager.ssr_generate.use();
+			progManager.ssr_generate.getUniform("matrix_v_invtrans").setMatrix4f(cameraMatrix.invert(multipliedMatrix).transpose());
+			updateMatrix(progManager.ssr_generate);
+			quadArray.draw(GL_TRIANGLES, 0, 6);
+			
+		}else {
+			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+		}
 
 		// ================================================= COMBINE G BUFFERS =======================================================
 		
@@ -970,6 +1008,8 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cubemapGenerator.bindIrradianceTextureB(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		postBufferA.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		
 		progManager.gbuffer_combined.use();
 		updateMatrix(progManager.gbuffer_combined);
@@ -983,14 +1023,18 @@ public class GlobalRenderer {
 		cubemapGenerator.bindCubemap(7);
 		cubemapGenerator.bindIrradianceTextureA(8);
 		cubemapGenerator.bindIrradianceTextureB(9);
+		ssrBuffer.bindColorTexture(0, 10);
 		progManager.gbuffer_combined_irradianceMapBlend.set1f(((float)((this.totalTicks + client.partialTicks - 1) % 20.0f)) / 20.0f);
+		progManager.gbuffer_combined_enableSSR.set1i(GameConfiguration.enableSSR ? 1 : 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
-
+		
 		ambientOcclusionBuffer.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		cubemapGenerator.bindIrradianceTextureA(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		cubemapGenerator.bindIrradianceTextureB(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		postBufferA.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
@@ -1142,6 +1186,14 @@ public class GlobalRenderer {
 		gBuffer.bindColorTexture(0, 1);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
+		// =========================================== STORE FRAME FOR SSR ==================================================
+
+		previousFrame.setSize(w, h);
+		
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, postBufferA.glObject);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, previousFrame.glObject);
+		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		
 		// ============================================ RENDER LENS FLARES ==================================================
 
 		
@@ -1258,26 +1310,26 @@ public class GlobalRenderer {
 		}
 		
 		if(GameConfiguration.enableBloom) {
-			// ========================================= RIGHT BLOOM ==============================================
+			// ========================================= VERT BLOOM ==============================================
 			
 			postBufferA.setSize(w, h);
 			postBufferA.bindFramebuffer();
 			glViewport(0, 0, w / 8 * 2, h / 8 * 2);
 	
 			progManager.post_bloom_h.use();
-			progManager.post_bloom_h_screenSizeInv.set2f(1.0f / w, 1.0f / h);
+			progManager.post_bloom_h_screenSizeInv.set2f(0.0f, 1.0f / h);
 			progManager.post_bloom_h_exposure.set1f(exposure);
 			postBufferB.bindColorTexture(0);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 			
-			// ========================================= LEFT BLOOM ==============================================
+			// ========================================= HORZ BLOOM ==============================================
 			
 			postBufferC.setSize(w, h);
 			postBufferC.bindFramebuffer();
 			glViewport(0, 0, w / 8 * 2, h / 8 * 2);
 			
 			progManager.post_bloom.use();
-			progManager.post_bloom_screenSizeInv.set2f(-1.0f / w, 1.0f / h);
+			progManager.post_bloom_screenSizeInv.set2f(1.0f / w, 0.0f);
 			progManager.post_bloom_offset.set2f(0.0f, 0.0f);
 			progManager.post_bloom_scale.set1f(0.25f);
 			postBufferA.bindColorTexture(0);
@@ -1405,7 +1457,7 @@ public class GlobalRenderer {
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
-		//this.cloudMapGenerator.bindTextureA(0);
+		//ssrBuffer.bindColorTexture(0);
 		//this.cubemapGenerator.bindIrradianceTextureA(0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
@@ -1734,6 +1786,9 @@ public class GlobalRenderer {
 		//glDeleteQueries(queryObjectPool);
 		this.starsTexture.destroy();
 		this.moonsTexture.destroy();
+		this.testMirror.destroy();
+		this.previousFrame.destroy();
+		this.ssrBuffer.destroy();
 	}
 
 }
