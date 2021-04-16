@@ -15,18 +15,24 @@ void main() {
 
 #ifdef FRAG
 
+uniform mat4 matrix_p_inv;
+
+vec3 getPosition(sampler2D dt, vec2 coord) {
+	float depth = texture(dt, coord).r;
+	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	return tran.xyz / tran.w;
+}
+
 in vec2 texCoord;
 
 layout(location = 0) out vec3 fragOut;
 
 uniform sampler2D positionTex;
 
-uniform mat4 matrix_v;
-
 void main() {
-	vec3 posV = texture(positionTex, texCoord).rgb;
+	vec3 posV = getPosition(positionTex, texCoord);
 	if(posV.x == 0.00 && posV.y == 0.0 && posV.z == 0.0) discard;
-	fragOut = (matrix_v * vec4(posV, 1.0)).xyz;
+	fragOut = posV;
 }
 
 #endif

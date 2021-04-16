@@ -41,6 +41,8 @@ public class GameConfiguration {
 	public static boolean cloudsMoveWithPlayer = true;
 	public static boolean enableSSR = true;
 	
+	public static int ssrMapDivisor = 2;
+	
 	public static float farPlane = 2048.0f;
 	
 }

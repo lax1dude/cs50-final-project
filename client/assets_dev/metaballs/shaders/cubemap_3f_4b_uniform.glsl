@@ -42,12 +42,14 @@ uniform float emission;
 uniform vec3 diffuseColor;
 
 void main() {
-    diffuse = computeSunlight(
+    vec4 diffuse2 = computeSunlight(
 		diffuseColor,
 		normalize(v_normal * 2.0 - 1.0),
 		v_pos, sunDirection, sunRGB,
 		vec4(metallic, roughness, specular, emission)
 	);
+	if(diffuse2.a == 0.0) discard;
+	diffuse = diffuse2.rgb;
 }
 
 #endif

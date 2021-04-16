@@ -42,8 +42,10 @@ uniform sampler2D ssaoBuffer;
 uniform samplerCube cubemap;
 uniform sampler2D irradianceMapA;
 uniform sampler2D irradianceMapB;
+uniform sampler2D specularIBL;
 
 uniform sampler2D ssrBuffer;
+uniform sampler2D brdfLUT;
 
 uniform float irradianceMapBlend;
 uniform int enableSSR;
@@ -67,10 +69,28 @@ vec2 clipSpaceFromDir(vec3 dir) {
     );
 }
 
+vec2 clipSpaceFromDir2(vec3 dir) {
+	dir.xz /= abs(dir.y) + 1.0;
+	dir.xz = dir.xz * 0.5 + 0.5;
+    if(dir.y < 0.0) {
+		return dir.xz * vec2(0.5, 1.0);
+	}else {
+		return dir.xz * vec2(0.5, 1.0) + vec2(0.5, 0.0);
+	}
+}
+
 vec3 sampleIrradianceTexture(vec3 dir) {
-	vec2 pos = clamp(clipSpaceFromDir(dir * vec3(1.0, -1.0, 1.0)) * 0.5 + 0.5, 0.01, 0.99);
+	vec2 pos = clamp(clipSpaceFromDir(dir * vec3(-1.0, -1.0, 1.0)) * 0.5 + 0.5, 0.0, 1.0);
 	return mix(texture(irradianceMapA, pos).rgb, texture(irradianceMapB, pos).rgb, irradianceMapBlend);
 }
+
+vec3 sampleCubemap(vec3 normPos, vec3 normalC) {
+	return texture(cubemap, reflect(normPos, normalC) * vec3(-1.0, -1.0, 1.0)).rgb;
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+} 
 
 void main() {
 
@@ -83,21 +103,44 @@ void main() {
 	normalC = normalV.xyz * 2.0 - 1.0;
 	vec4 reflection = vec4(0.0);
 	
+	vec3 normPos = normalize(positionV);
+	
 	if(materialV.a > 0.0) {
 		if(enableSSR != 0) {
 			reflection = texture(ssrBuffer, v_texCoord);
 			if(reflection.a < 1.0) {
-				reflection = vec4(reflection.rgb + texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb * (1.0 - reflection.a), 1.0);
+				reflection = vec4(reflection.rgb + sampleCubemap(normPos, normalC) * (1.0 - reflection.a), 1.0);
 			}
 		}else {
-			reflection = vec4(texture(cubemap, reflect(normalize(positionV), normalC) * vec3(-1.0, -1.0, 1.0)).rgb, 1.0);
+			reflection = vec4(sampleCubemap(normPos, normalC), 1.0);
 		}
 	}
 	
+	float r = materialV.g;
+	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, 1.0));
+	vec3 specularIBLValue;
+	if(r < 0.2 || materialV.a > 0.0) {
+		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : sampleCubemap(normPos, normalC);
+	}else if(r < 0.4) {
+		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25)).rgb;
+	}else if(r < 0.6) {
+		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.25)).rgb;
+	}else if(r < 0.8){
+		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.50)).rgb;
+	}else {
+		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.75)).rgb;
+	}
+	
+	float nDotV = 0.0;
+	vec3 Ff = fresnelSchlickRoughness(nDotV = max(dot(normalC, normalize(positionV)), 0.0), vec3(1.0) * materialV.r, r);
+	vec2 brdf = texture(brdfLUT, vec2(nDotV, r)).rg;
+	vec3 specular2 = specularIBLValue * (Ff * brdf.x + brdf.y);
+	
 	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = (diffuseV.rgb * (lightDiffuseV + (irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2));
-	fragOut = vec4(mix(color, reflection.rgb * 0.5, materialV.a * reflection.a) + lightSpecularV, 1.0);
+	vec3 color = diffuseV.rgb * (lightDiffuseV + (materialV.r * irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2) + specular2 * materialV.b;
+	
+	fragOut = vec4(mix(color, reflection.rgb * 0.8, materialV.a * reflection.a) + lightSpecularV, 1.0);
 }
 
 #endif

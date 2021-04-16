@@ -158,8 +158,7 @@ public class ProgramManager {
 	public EaglUniform cubemap_3f_4b_2f_uniform_roughness;
 	public EaglUniform cubemap_3f_4b_2f_uniform_specular;
 	public EaglUniform cubemap_3f_4b_2f_uniform_emission;
-	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrixA;
-	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrixB;
+	public EaglUniform cubemap_3f_4b_2f_uniform_shadowMatrix;
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunDirection;
 	public EaglUniform cubemap_3f_4b_2f_uniform_sunRGB;
 	
@@ -168,8 +167,7 @@ public class ProgramManager {
 	public EaglUniform cubemap_3f_4b_uniform_roughness;
 	public EaglUniform cubemap_3f_4b_uniform_specular;
 	public EaglUniform cubemap_3f_4b_uniform_emission;
-	public EaglUniform cubemap_3f_4b_uniform_shadowMatrixA;
-	public EaglUniform cubemap_3f_4b_uniform_shadowMatrixB;
+	public EaglUniform cubemap_3f_4b_uniform_shadowMatrix;
 	public EaglUniform cubemap_3f_4b_uniform_sunDirection;
 	public EaglUniform cubemap_3f_4b_uniform_sunRGB;
 	public EaglUniform cubemap_3f_4b_uniform_diffuseColor;
@@ -211,6 +209,10 @@ public class ProgramManager {
 	public EaglUniform dither_blend_screenSizeInv;
 	
 	public EaglProgram ssr_generate;
+
+	public EaglProgram specular_map_generate;
+	public EaglProgram specular_map_blur;
+	public EaglUniform specular_map_blur_screenSizeInv;
 	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
@@ -270,6 +272,8 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("irradianceMapA").set1i(8);
 		gbuffer_combined.getUniform("irradianceMapB").set1i(9);
 		gbuffer_combined.getUniform("ssrBuffer").set1i(10);
+		gbuffer_combined.getUniform("specularIBL").set1i(11);
+		gbuffer_combined.getUniform("brdfLUT").set1i(12);
 
 		gbuffer_combined_irradianceMapBlend = gbuffer_combined.getUniform("irradianceMapBlend");
 		gbuffer_combined_enableSSR = gbuffer_combined.getUniform("enableSSR");
@@ -553,8 +557,7 @@ public class ProgramManager {
 		cubemap_3f_4b_2f_uniform_roughness = cubemap_3f_4b_2f_uniform.getUniform("roughness");
 		cubemap_3f_4b_2f_uniform_specular = cubemap_3f_4b_2f_uniform.getUniform("specular");
 		cubemap_3f_4b_2f_uniform_emission = cubemap_3f_4b_2f_uniform.getUniform("emission");
-		cubemap_3f_4b_2f_uniform_shadowMatrixA = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrixA");
-		cubemap_3f_4b_2f_uniform_shadowMatrixB = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrixB");
+		cubemap_3f_4b_2f_uniform_shadowMatrix = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrix");
 		cubemap_3f_4b_2f_uniform_sunDirection = cubemap_3f_4b_2f_uniform.getUniform("sunDirection");
 		cubemap_3f_4b_2f_uniform_sunRGB = cubemap_3f_4b_2f_uniform.getUniform("sunRGB");
 		
@@ -569,8 +572,7 @@ public class ProgramManager {
 		cubemap_3f_4b_uniform_roughness = cubemap_3f_4b_uniform.getUniform("roughness");
 		cubemap_3f_4b_uniform_specular = cubemap_3f_4b_uniform.getUniform("specular");
 		cubemap_3f_4b_uniform_emission = cubemap_3f_4b_uniform.getUniform("emission");
-		cubemap_3f_4b_uniform_shadowMatrixA = cubemap_3f_4b_uniform.getUniform("shadowMatrixA");
-		cubemap_3f_4b_uniform_shadowMatrixB = cubemap_3f_4b_uniform.getUniform("shadowMatrixB");
+		cubemap_3f_4b_uniform_shadowMatrix = cubemap_3f_4b_uniform.getUniform("shadowMatrix");
 		cubemap_3f_4b_uniform_sunDirection = cubemap_3f_4b_uniform.getUniform("sunDirection");
 		cubemap_3f_4b_uniform_sunRGB = cubemap_3f_4b_uniform.getUniform("sunRGB");
 		cubemap_3f_4b_uniform_diffuseColor = cubemap_3f_4b_uniform.getUniform("diffuseColor");
@@ -679,6 +681,21 @@ public class ProgramManager {
 		ssr_generate.getUniform("depth").set1i(2);
 		ssr_generate.getUniform("prevFrame").set1i(3);
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/specular_map_generate.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "specular_map_generate.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "specular_map_generate.fsh");
+		this.specular_map_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		specular_map_generate.getUniform("cubeMap").set1i(0);
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/specular_map_blur.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "specular_map_blur.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "specular_map_blur.fsh");
+		this.specular_map_blur = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		specular_map_blur.getUniform("tex").set1i(0);
+		specular_map_blur_screenSizeInv = specular_map_blur.getUniform("screenSizeInv");
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -729,6 +746,8 @@ public class ProgramManager {
 		moon_night.destroy();
 		dither_blend.destroy();
 		ssr_generate.destroy();
+		specular_map_generate.destroy();
+		specular_map_blur.destroy();
 	}
 
 }

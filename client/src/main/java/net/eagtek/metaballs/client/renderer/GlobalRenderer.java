@@ -60,6 +60,7 @@ public class GlobalRenderer {
 	private final EaglImage2D testModelTexture;
 	private final EaglImage2D starsTexture;
 	private final EaglImage2D moonsTexture;
+	private final EaglImage2D brdfLUT;
 	
 	private ModelObjectRenderer testModelRenderer = null;
 	private ModelObjectRenderer longArmsRenderer = null;
@@ -179,7 +180,7 @@ public class GlobalRenderer {
 		//dirtTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/dirt1.jpg"));
 		starsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/stars.jpg")).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR);
 		moonsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/moons.jpg")).filter(GL_LINEAR, GL_LINEAR);
-		
+		brdfLUT = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/ibl_brdf_lut.png")).filter(GL_LINEAR, GL_LINEAR);
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
 		//load test model =====================================================
@@ -418,7 +419,7 @@ public class GlobalRenderer {
 		
 		modelMatrix.clear();
 		
-		testModelRenderer.setMaterial(0.0f, 0.0f, 0.5f, 0.2f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.2f, 0.2f, 0.0f, 0.0f);
 		
 		longArmsRenderer.setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f);
 		longArmsRenderer.setPosition(0.0d, 0.0d, 0.0d).setRotation(0.0f, (client.totalTicksF * 2f) % 360.0f, 0.0f);
@@ -971,11 +972,12 @@ public class GlobalRenderer {
 		glCullFace(GL_BACK);
 		
 		// =========================================== RENDER SCREEN SPACE REFLECTIONS ==============================================
-
-		ssrBuffer.setSize(w / 2, h / 2);
+		
+		int div = GameConfiguration.ssrMapDivisor;
+		ssrBuffer.setSize(w / div, h / div);
 		ssrBuffer.bindFramebuffer();
 		
-		glViewport(0, 0, w / 2, h / 2);
+		glViewport(0, 0, w / div, h / div);
 		
 		if(GameConfiguration.enableSSR) {
 
@@ -1008,7 +1010,9 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cubemapGenerator.bindIrradianceTextureB(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		postBufferA.bindColorTexture(0);
+		ssrBuffer.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		cubemapGenerator.bindSpecularIBLTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		
 		progManager.gbuffer_combined.use();
@@ -1024,6 +1028,8 @@ public class GlobalRenderer {
 		cubemapGenerator.bindIrradianceTextureA(8);
 		cubemapGenerator.bindIrradianceTextureB(9);
 		ssrBuffer.bindColorTexture(0, 10);
+		cubemapGenerator.bindSpecularIBLTexture(11);
+		brdfLUT.bind(12);
 		progManager.gbuffer_combined_irradianceMapBlend.set1f(((float)((this.totalTicks + client.partialTicks - 1) % 20.0f)) / 20.0f);
 		progManager.gbuffer_combined_enableSSR.set1i(GameConfiguration.enableSSR ? 1 : 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
@@ -1034,7 +1040,9 @@ public class GlobalRenderer {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		cubemapGenerator.bindIrradianceTextureB(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		postBufferA.bindColorTexture(0);
+		ssrBuffer.bindColorTexture(0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		cubemapGenerator.bindSpecularIBLTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		
 		// =================================================== RENDER SKY =======================================================
@@ -1058,28 +1066,9 @@ public class GlobalRenderer {
 		glDisable(GL_CULL_FACE);
 		
 		if(GameConfiguration.enableSunlightVolumetric && scene.lightShafts && scene.enableSun) {
-			// ================================================= RENDER VIEW SPACE POS MAP =======================================================
 			
-			postBufferA.setSize(w, h);
-			postBufferA.bindFramebuffer();
+			// ================================================= RENDER LIGHT SHAFT MAP ================================================
 			
-			glViewport(0, 0, w, h);
-			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
-			/*
-			progManager.add_positions.use();
-			modelMatrix.pushMatrix();
-			modelMatrix.scale(1000.0f);
-			updateMatrix(progManager.add_positions);
-			skyDome.drawAll(GL_TRIANGLES);
-			modelMatrix.popMatrix();
-			*/
-			progManager.position_to_view.use();
-			updateMatrix(progManager.position_to_view);
-			opaqueDepthBuffer.bindDepthTexture(3);
-			quadArray.draw(GL_TRIANGLES, 0, 6);
-			
-			// ================================================= RENDER LIGHT SHAFT MAP =======================================================
 			ambientOcclusionBuffer.setSize(w / 2, h / 2);
 			ambientOcclusionBuffer.bindFramebuffer();
 	
@@ -1090,40 +1079,13 @@ public class GlobalRenderer {
 			progManager.light_shaft_generate.use();
 			progManager.light_shaft_generate_shadowMatrixA.setMatrix4f(sunShadowProjViewA);
 			progManager.light_shaft_generate_shadowMatrixB.setMatrix4f(sunShadowProjViewB);
-			progManager.light_shaft_generate_matrix_v_inv.setMatrix4f(cameraMatrix.invert(multipliedMatrix));
+			//progManager.light_shaft_generate_matrix_v_inv.setMatrix4f(cameraMatrix.invert(multipliedMatrix));
 			updateMatrix(progManager.light_shaft_generate);
-			postBufferA.bindColorTexture(0, 0);
+			opaqueDepthBuffer.bindDepthTexture(0);
 			sunShadowMap.bindDepthTexture(1);
-			opaqueDepthBuffer.bindDepthTexture(2);
 			quadArray.draw(GL_TRIANGLES, 0, 6);
 		}
-/*
-		// ================================================= BLUR HORIZONTAL LIGHT SHAFT =======================================================
 		
-		ambientOcclusionBlur.setSize(w / 2, h / 2);
-		ambientOcclusionBlur.bindFramebuffer();
-		
-		progManager.ssao_blur.use();
-		progManager.ssao_blur_blurDirection.set2f(4.0f / w, 0.0f);
-		updateMatrix(progManager.ssao_blur);
-		//linearDepthBuffer.bindColorTexture(0, 1);
-		gBuffer.bindDepthTexture(1);
-		ambientOcclusionBuffer.bindColorTexture(0, 0);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-
-		// ================================================= BLUR VERTICAL LIGHT SHAFT =======================================================
-		
-		ambientOcclusionBuffer.setSize(w / 2, h / 2);
-		ambientOcclusionBuffer.bindFramebuffer();
-		
-		progManager.ssao_blur.use();
-		progManager.ssao_blur_blurDirection.set2f(0.0f, 4.0f / h);
-		updateMatrix(progManager.ssao_blur);
-		ambientOcclusionBlur.bindColorTexture(0, 0);
-		//linearDepthBuffer.bindColorTexture(0, 1);
-		gBuffer.bindDepthTexture(1);
-		quadArray.draw(GL_TRIANGLES, 0, 6);
-*/
 		// ================================================= RENDER FOG OVERLAY =======================================================
 		
 		combinedBuffer.bindFramebuffer();
@@ -1175,7 +1137,7 @@ public class GlobalRenderer {
 		modelMatrix.pushMatrix().identity();
 		
 		// ============================================ DITHER BLEND ==================================================
-
+		
 		postBufferA.setSize(w, h);
 		postBufferA.bindFramebuffer();
 		glViewport(0, 0, w, h);
@@ -1457,8 +1419,8 @@ public class GlobalRenderer {
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
-		//ssrBuffer.bindColorTexture(0);
-		//this.cubemapGenerator.bindIrradianceTextureA(0);
+		//cubemapGenerator.bindSpecularIBLTexture(0);
+		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		// ================================================= RENDER FXAA =======================================================
@@ -1509,7 +1471,7 @@ public class GlobalRenderer {
 			updateMatrix(progManager.sky);
 			
 			int kelvin = scene.sunKelvin;
-			float scale = 10.0f;
+			float scale = lowPolySky ? 0.0f : 10.0f;
 			progManager.sky_sunColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
 			
 			scale = (float)Math.sqrt(Math.max(scene.sunDirection.y, 0.0f) + 0.01f) * 9.0f;
@@ -1550,7 +1512,7 @@ public class GlobalRenderer {
 					moonsTexture.bind(0);
 					progManager.moon_day.use();
 					progManager.moon_day_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
-					int moonFace = ((scene.time / 30000) + 12) % 24;
+					int moonFace = ((scene.time / 33750) + 12) % 24;
 					progManager.moon_day_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
 					updateMatrix(progManager.moon_day);
 					quadArray.draw(GL_TRIANGLES, 0, 6);
@@ -1564,7 +1526,7 @@ public class GlobalRenderer {
 					cloudMapGenerator.bindTextureB(2);
 					progManager.moon_night.use();
 					progManager.moon_night_moonColor.set3f(colorTemperatures.getLinearR(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearG(scene.moonKelvin) * scene.moonBrightness, colorTemperatures.getLinearB(scene.moonKelvin) * scene.moonBrightness);
-					int moonFace = ((scene.time / 30000) + 12) % 24;
+					int moonFace = ((scene.time / 33750) + 12) % 24;
 					progManager.moon_night_moonTexXY.set2f((((moonFace % 6) * 155.0f) / 1024.0f), 1.0f - (((moonFace / 6 + 1) * 155.0f) / 1024.0f));
 					progManager.moon_night_cloudTextureBlend.set1f(cloudMapGenerator.blendAmount());
 					progManager.moon_night_cloudColor.set3f(colorTemperatures.getLinearR(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearG(kelvin) * scene.sunBrightness * scale, colorTemperatures.getLinearB(kelvin) * scene.sunBrightness * scale);
@@ -1789,6 +1751,7 @@ public class GlobalRenderer {
 		this.testMirror.destroy();
 		this.previousFrame.destroy();
 		this.ssrBuffer.destroy();
+		this.brdfLUT.destroy();
 	}
 
 }

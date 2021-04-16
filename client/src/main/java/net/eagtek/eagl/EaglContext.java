@@ -387,8 +387,10 @@ public class EaglContext {
 				case KHRDebug.GL_DEBUG_SEVERITY_MEDIUM_KHR: b.append("[MEDIUM Severity] "); break;
 				case KHRDebug.GL_DEBUG_SEVERITY_HIGH_KHR: b.append("[SEVERE] "); break;
 				}
-
-				b.append(GLDebugMessageKHRCallback.getMessage(length, message));
+				
+				String message2 = GLDebugMessageKHRCallback.getMessage(length, message);
+				if(message2.contains("GPU stall due to ReadPixels")) return;
+				b.append(message2);
 				log.error(b.toString());
 
 				StackTraceElement[] ex = new RuntimeException().getStackTrace();

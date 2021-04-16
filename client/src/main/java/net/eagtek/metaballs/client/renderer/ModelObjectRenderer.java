@@ -156,8 +156,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_uniform_roughness.set1f(roughness);
 				m.cubemap_3f_4b_uniform_emission.set1f(emission);
-				m.cubemap_3f_4b_uniform_shadowMatrixA.setMatrix4f(globalRenderer.sunShadowProjViewA);
-				m.cubemap_3f_4b_uniform_shadowMatrixB.setMatrix4f(globalRenderer.sunShadowProjViewB);
+				m.cubemap_3f_4b_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_uniform_sunRGB.set3f(
 						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
@@ -172,8 +171,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
 				m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
-				m.cubemap_3f_4b_2f_uniform_shadowMatrixA.setMatrix4f(globalRenderer.sunShadowProjViewA);
-				m.cubemap_3f_4b_2f_uniform_shadowMatrixB.setMatrix4f(globalRenderer.sunShadowProjViewB);
+				m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
 						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,

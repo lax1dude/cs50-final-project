@@ -91,7 +91,7 @@ void main() {
 	riseFac = clamp(-sunDirection.y * 5.0, 0.0, 1.0);
 	riseFac *= riseFac;
 	
-    fragOut = mix(
+	fragOut = mix(
 		colorv +
 		sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0)) +
 		cloudColor * (cloudMapSample /* clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)*/) +
