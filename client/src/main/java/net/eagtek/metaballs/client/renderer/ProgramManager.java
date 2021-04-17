@@ -214,6 +214,9 @@ public class ProgramManager {
 	public EaglProgram specular_map_blur;
 	public EaglUniform specular_map_blur_screenSizeInv;
 	
+	public EaglProgram text_color;
+	public EaglUniform text_color_fontSizePixelsOverTextureDimensions;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -687,7 +690,7 @@ public class ProgramManager {
 		this.specular_map_generate = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 
 		specular_map_generate.getUniform("cubeMap").set1i(0);
-		
+
 		source = ResourceLoader.loadResourceString("metaballs/shaders/specular_map_blur.glsl");
 		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "specular_map_blur.vsh");
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "specular_map_blur.fsh");
@@ -695,6 +698,14 @@ public class ProgramManager {
 
 		specular_map_blur.getUniform("tex").set1i(0);
 		specular_map_blur_screenSizeInv = specular_map_blur.getUniform("screenSizeInv");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/text_color.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "text_color.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "text_color.fsh");
+		this.text_color = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		text_color.getUniform("tex").set1i(0);
+		text_color_fontSizePixelsOverTextureDimensions = text_color.getUniform("fontSizePixelsOverTextureDimensions");
 		
 	}
 	
@@ -748,6 +759,7 @@ public class ProgramManager {
 		ssr_generate.destroy();
 		specular_map_generate.destroy();
 		specular_map_blur.destroy();
+		text_color.destroy();
 	}
 
 }

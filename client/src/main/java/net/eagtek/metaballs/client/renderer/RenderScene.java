@@ -9,8 +9,6 @@ public class RenderScene {
 	public final LinkedHashSet<ObjectRenderer> objectRenderers = new LinkedHashSet();
 	public final LinkedHashSet<LightData> lightRenderers = new LinkedHashSet();
 	public final LinkedHashSet<ShadowLightRenderer> shadowLightRenderers = new LinkedHashSet();
-	public final LinkedHashSet<ParticleField> particleRenderers = new LinkedHashSet();
-	public final LinkedHashSet<WaterRenderer> waterRenderers = new LinkedHashSet();
 	
 	//package cache variables
 	Vector3f sunDirection = new Vector3f();
@@ -20,6 +18,8 @@ public class RenderScene {
 	int fogKelvin = 6000;
 	int moonKelvin = 7000;
 	float moonBrightness = 2.0f;
+	
+	boolean moonIsUp = false;
 
 	float sunBrightness = 100.0f;
 	float skyBrightness = 1.0f;
@@ -36,6 +36,8 @@ public class RenderScene {
 	public float windZ = 0.004f;
 	
 	public int time = 0;
+	int cubemapSunKelvin;
+	float cubemapSunBrightness;
 	
 	public RenderScene() {
 		

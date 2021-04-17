@@ -68,12 +68,11 @@ vec4 calculateSSR(vec3 pos, vec3 norm2) {
 		dist = pos2.z - getPosition2(depth, uv.xy).z;
 		
 		if(abs(dist) < 0.3 * step) {
-		/*
 			//if(dot(norm, mat3(matrix_v_invtrans) * (texture(normal, uv.xy).rgb * 2.0 - 1.0)) > -0.5) {
 				vec3 pos3 = pos2;
 				vec3 dir = norm;
 				float dist2; vec4 uv2;
-				for(int j = 0; j < 0; ++j) {
+				for(int j = 0; j < 3; ++j) {
 					uv2 = matrix_p * vec4(pos3, 1.0);
 					uv2.xyz /= uv2.w;
 					uv2.xyz = uv2.xyz * 0.5 + 0.5;
@@ -91,8 +90,7 @@ vec4 calculateSSR(vec3 pos, vec3 norm2) {
 				uv2.xy = clamp(uv2.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
 				return vec4(texture(prevFrame, uv2.xy).rgb, 1.0);
 			//}
-		*/
-			return vec4(texture(prevFrame, uv.xy).rgb, 1.0);
+			//return vec4(texture(prevFrame, uv.xy).rgb, 1.0);
 		}
 	}
 	return vec4(0.0);

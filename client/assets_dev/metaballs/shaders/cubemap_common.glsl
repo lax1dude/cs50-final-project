@@ -28,12 +28,12 @@ vec4 computeSunlight(vec3 p_diffuse, vec3 p_normal, vec3 p_position, vec3 p_sunD
 			vec3 halfwayDir = normalize(lightDir + viewDir);
 			float spec = pow(max(dot(p_normal, halfwayDir), 0.0), max(32.0 - p_metallicRoughnessSpecularEmission.y * 32.0, 0.0));
 			
-			return vec4(p_diffuse * (diff + 0.2 + (p_metallicRoughnessSpecularEmission.w * 50.0)) * p_sunRGB + spec * p_sunRGB * p_metallicRoughnessSpecularEmission.z, 1.0);
+			return vec4(p_diffuse * (diff + 0.1 + (p_metallicRoughnessSpecularEmission.w * 50.0)) * p_sunRGB + spec * p_sunRGB * p_metallicRoughnessSpecularEmission.z, 1.0);
 		}else {
-			return vec4(p_diffuse * (0.2 + (p_metallicRoughnessSpecularEmission.w * 50.0)), 1.0);
+			return vec4(p_diffuse * (0.1 + (p_metallicRoughnessSpecularEmission.w * 50.0)), 1.0);
 		}
 	}else {
-		return vec4(p_diffuse * (0.2 + (p_metallicRoughnessSpecularEmission.w * 50.0)), 1.0);
+		return vec4(p_diffuse * (0.1 + (p_metallicRoughnessSpecularEmission.w * 50.0)), 1.0);
 	}
 	
 }

@@ -54,7 +54,7 @@ class RenderLightBulbs {
 		}
 
 		glBindBuffer(GL_ARRAY_BUFFER, glInstancingBuffer);
-		glBufferData(GL_ARRAY_BUFFER, uploadBuffer, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, uploadBuffer, GL_DYNAMIC_DRAW);
 		
 		GLStateManager.bindVertexArray(glVertexArray);
 		glBindBuffer(GL_ARRAY_BUFFER, glVertexBuffer);
@@ -151,7 +151,7 @@ class RenderLightBulbs {
 	private void drawInstancedArrays(int count) {
 		GLStateManager.bindVertexArray(glVertexArray);
 		glBindBuffer(GL_ARRAY_BUFFER, glInstancingBuffer);
-		glBufferData(GL_ARRAY_BUFFER, uploadBuffer, GL_STATIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, uploadBuffer);
 		renderer.progManager.light_bulb_renderer.use();
 		renderer.progManager.light_bulb_renderer_aspectRatio.set2f(1.0f / renderer.displayW, 1.0f / renderer.displayH);
 		lightBulbTexture.bind(0);

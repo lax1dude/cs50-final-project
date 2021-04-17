@@ -107,6 +107,9 @@ public class GlobalRenderer {
 	public final CubemapGenerator cubemapGenerator;
 	public final RenderLightBulbs lightBulbRenderer;
 	public final RenderLensFlares lensFlareRenderer;
+	public final UIRenderer uiRenderer;
+	
+	public final FontFile unicodeTextRenderer;
 	
 	public float exposure = 2.0f;
 	public float targetExposure = 2.0f;
@@ -149,6 +152,9 @@ public class GlobalRenderer {
 	
 	public GlobalRenderer(GameClient gameClient) {
 		client = gameClient;
+		
+		uiRenderer = new UIRenderer(this.client);
+		
 		progManager = new ProgramManager(this);
 
 		for(int i = 0; i < bbVertexes.length; ++i) {
@@ -183,13 +189,20 @@ public class GlobalRenderer {
 		brdfLUT = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/ibl_brdf_lut.png")).filter(GL_LINEAR, GL_LINEAR);
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 		
-		//load test model =====================================================
+		
 		
 		this.rand = new Random();
 		
 		try {
 			InputStream stream;
 
+		//load font renderer =================================================
+			stream = ResourceLoader.loadResource("metaballs/fonts/unicode.eff");
+			unicodeTextRenderer = new FontFile(stream);
+			stream.close();
+					
+		//load test model =====================================================
+			
 			stream = ResourceLoader.loadResource("metaballs/models/testscene.mdl");
 			client.getScene().objectRenderers.add(testModelRenderer = new ModelObjectRenderer(EaglModelLoader.loadModel(stream), testModelTexture.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()));
 			stream.close();
@@ -338,6 +351,8 @@ public class GlobalRenderer {
 		
 		scene.fogDensity = 0.005f;
 		
+		scene.cubemapSunBrightness = scene.sunDirection.y > 0.0f ? scene.sunBrightness : scene.moonBrightness;
+		scene.cubemapSunKelvin = scene.sunDirection.y > 0.0f ? scene.sunKelvin : scene.moonKelvin;
 		
 		int w = displayW = client.context.getInnerWidth();
 		int h = displayH = client.context.getInnerHeight();
@@ -419,7 +434,7 @@ public class GlobalRenderer {
 		
 		modelMatrix.clear();
 		
-		testModelRenderer.setMaterial(0.0f, 0.0f, 0.2f, 0.2f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.6f, 1.0f, 0.0f, 0.0f);
 		
 		longArmsRenderer.setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f);
 		longArmsRenderer.setPosition(0.0d, 0.0d, 0.0d).setRotation(0.0f, (client.totalTicksF * 2f) % 360.0f, 0.0f);
@@ -1419,7 +1434,8 @@ public class GlobalRenderer {
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
-		//cubemapGenerator.bindSpecularIBLTexture(0);
+		//unicodeTextRenderer.bindTexture();
+		//cubemapGenerator.bindIrradianceTextureA(0);
 		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
@@ -1445,6 +1461,14 @@ public class GlobalRenderer {
 		
 		toneMapped.bindColorTexture(0, 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
+		
+		int w2 = w;
+		int h2 = h;
+		while(w2 > 2000) {
+			w2 /= 2;
+			h2 /= 2;
+		}
+		renderDebugOverlay(w2, h2);
 		
 		++framesPassed;
 		++totalFrames;
@@ -1502,6 +1526,7 @@ public class GlobalRenderer {
 				modelMatrix.pushMatrix();
 				
 				glEnable(GL_BLEND);
+				modelMatrix.rotate(180.0f * MathUtil.toRadians, 0.0f, 0.0f, 1.0f);
 				modelMatrix.rotateTowards(scene.moonDirection.x, scene.moonDirection.y, scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
 				modelMatrix.translate(0.0f, 0.0f, 15.0f);
 				
@@ -1573,6 +1598,45 @@ public class GlobalRenderer {
 		if(prog.matrix_v_inv != null) {
 			prog.matrix_v_inv.setMatrix4f(cameraMatrix.invert(multipliedMatrix));
 		}
+	}
+	
+	private void renderDebugOverlay(int w, int h) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		
+		
+		modelMatrix.pushMatrix();
+		modelMatrix.identity();
+		modelMatrix.scale(1.0f, -1.0f, 0.0f);
+		modelMatrix.translate(-1.0f, -1.0f, 0.0f);
+		modelMatrix.scale(2.0f / w, 2.0f / h, 0.0f);
+		
+		uiRenderer.bindColorShader(unicodeTextRenderer, modelMatrix);
+		
+		StringBuilder debugInfo = new StringBuilder();
+		debugInfo.append("Press TAB to release mouse, ESC to exit\n");
+		debugInfo.append("Resolution: ");
+		debugInfo.append(client.context.getInnerWidth());
+		debugInfo.append('x');
+		debugInfo.append(client.context.getInnerHeight());
+		debugInfo.append(" @ ");
+		debugInfo.append(prevFramesPassed);
+		debugInfo.append(" fps");
+		
+		String dbg = debugInfo.toString();
+		
+		uiRenderer.textBegin();
+		uiRenderer.text(dbg, 2, 2, unicodeTextRenderer, 24, 0x777777);
+		uiRenderer.text(dbg, 0, 0, unicodeTextRenderer, 24, 0xFFFFFF);
+		
+		String s = "Unicode Test: \u4F60\u597D\u6211\u53EB\u5361\u723E\u5FB7\u9019\u662F\u6211\u7684\u904A\u6232\u5F15\u64CE";
+		uiRenderer.text(s, 2, h - 26 + 2, unicodeTextRenderer, 24, 0x777777);
+		uiRenderer.text(s, 0, h - 26, unicodeTextRenderer, 24, 0xFFFFFF);
+		uiRenderer.textDraw();
+		
+		modelMatrix.popMatrix();
+		
+		glDisable(GL_BLEND);
 	}
 	
 	public void translateToWorldCoords(double x, double y, double z) {
@@ -1752,6 +1816,7 @@ public class GlobalRenderer {
 		this.previousFrame.destroy();
 		this.ssrBuffer.destroy();
 		this.brdfLUT.destroy();
+		this.uiRenderer.destroy();
 	}
 
 }

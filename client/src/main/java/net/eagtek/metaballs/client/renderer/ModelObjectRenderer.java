@@ -159,9 +159,9 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_uniform_sunRGB.set3f(
-						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-						globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-						globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
+						globalRenderer.colorTemperatures.getLinearR(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearG(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearB(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f
 				);
 				m.cubemap_3f_4b_uniform_diffuseColor.set3f(r, g, b);
 				globalRenderer.updateMatrix(m.cubemap_3f_4b_uniform);
@@ -174,9 +174,9 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(
-						globalRenderer.colorTemperatures.getLinearR(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-						globalRenderer.colorTemperatures.getLinearG(scene.sunKelvin) * scene.sunBrightness * 0.1f,
-						globalRenderer.colorTemperatures.getLinearB(scene.sunKelvin) * scene.sunBrightness * 0.1f
+						globalRenderer.colorTemperatures.getLinearR(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearG(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearB(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f
 				);
 				globalRenderer.updateMatrix(m.cubemap_3f_4b_2f_uniform);
 				GLStateManager.bindTexture2D(texture2D);

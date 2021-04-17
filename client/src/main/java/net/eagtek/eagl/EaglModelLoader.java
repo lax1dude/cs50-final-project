@@ -63,7 +63,7 @@ public class EaglModelLoader {
 				
 				MemoryUtil.memFree(data);
 				
-				if(size == 0) {
+				if(size <= 0) {
 					MemoryUtil.memFree(upload);
 					throw new IOException("could not decompress vertex data");
 				}

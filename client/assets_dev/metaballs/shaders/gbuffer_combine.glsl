@@ -80,7 +80,7 @@ vec2 clipSpaceFromDir2(vec3 dir) {
 }
 
 vec3 sampleIrradianceTexture(vec3 dir) {
-	vec2 pos = clamp(clipSpaceFromDir(dir * vec3(-1.0, -1.0, 1.0)) * 0.5 + 0.5, 0.0, 1.0);
+	vec2 pos = clipSpaceFromDir2(dir * vec3(-1.0, -1.0, -1.0));
 	return mix(texture(irradianceMapA, pos).rgb, texture(irradianceMapB, pos).rgb, irradianceMapBlend);
 }
 
@@ -117,7 +117,7 @@ void main() {
 	}
 	
 	float r = materialV.g;
-	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, 1.0));
+	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, -1.0));
 	vec3 specularIBLValue;
 	if(r < 0.2 || materialV.a > 0.0) {
 		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : sampleCubemap(normPos, normalC);
@@ -138,7 +138,7 @@ void main() {
 	
 	vec3 irradiance = mix(sampleIrradianceTexture(normalC), vec3(0.3), pow(min(length(positionV) / 32.0, 1.0), 1.0 / 3.0) * 0.5 + 0.5);
 	
-	vec3 color = diffuseV.rgb * (lightDiffuseV + (materialV.r * irradiance * 0.3) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2) + specular2 * materialV.b;
+	vec3 color = diffuseV.rgb * (lightDiffuseV + ((1.0 - materialV.r) * irradiance) + (normalV.a * 50.0)) * (texture(ssaoBuffer, v_texCoord).r * 0.8 + 0.2) + specular2 * materialV.b;
 	
 	fragOut = vec4(mix(color, reflection.rgb * 0.8, materialV.a * reflection.a) + lightSpecularV, 1.0);
 }

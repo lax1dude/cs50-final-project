@@ -60,10 +60,11 @@ public class ToolsMain extends JFrame {
 	 * Create the frame.
 	 */
 	public ToolsMain() {
+		setAlwaysOnTop(true);
 		setResizable(false);
 		setTitle("eagl engine utils");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 300, 300);
+		setBounds(100, 100, 382, 231);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -94,7 +95,36 @@ public class ToolsMain extends JFrame {
 		btnNewButton.setHorizontalAlignment(SwingConstants.LEADING);
 		btnNewButton.setIconTextGap(20);
 		btnNewButton.setIcon(new ImageIcon(ToolsMain.class.getResource("/icons/modelconverter.png")));
-		btnNewButton.setBounds(16, 11, 262, 82);
+		btnNewButton.setBounds(16, 11, 350, 82);
 		contentPane.add(btnNewButton);
+		
+		JButton btnFontGenerator = new JButton("TrueType Font Converter");
+		btnFontGenerator.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				EventQueue.invokeLater(new Runnable() {
+					public void run() {
+						try {
+							JFileChooser j = new JFileChooser();
+							j.setCurrentDirectory(currentDir);
+							int r = j.showOpenDialog(ToolsMain.this);
+							if(r == JFileChooser.APPROVE_OPTION) {
+								currentDir = j.getSelectedFile().getParentFile();
+								FontGeneratorWindow win = new FontGeneratorWindow(ToolsMain.this, j.getSelectedFile());
+								win.setVisible(true);
+							}
+						}catch(Throwable t) {
+							JOptionPane.showMessageDialog(ToolsMain.this, t.toString(), "error", JOptionPane.ERROR_MESSAGE);
+						}
+						
+					}
+				});
+			}
+		});
+		btnFontGenerator.setIcon(new ImageIcon(ToolsMain.class.getResource("/icons/fontgenerator.png")));
+		btnFontGenerator.setIconTextGap(20);
+		btnFontGenerator.setHorizontalAlignment(SwingConstants.LEADING);
+		btnFontGenerator.setFont(new Font("Dialog", Font.BOLD, 17));
+		btnFontGenerator.setBounds(16, 104, 350, 82);
+		contentPane.add(btnFontGenerator);
 	}
 }
