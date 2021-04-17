@@ -15,6 +15,7 @@ import net.eagtek.eagl.ResourceLoader;
 import net.eagtek.eagl.EaglContext.KeyboardEvent;
 import net.eagtek.eagl.EaglContext.ToolkitPlatform;
 import net.eagtek.metaballs.MathUtil;
+import net.eagtek.metaballs.Util;
 import net.eagtek.metaballs.client.main.Main;
 import net.eagtek.metaballs.client.renderer.GlobalRenderer;
 import net.eagtek.metaballs.client.renderer.RenderScene;
@@ -132,7 +133,11 @@ public class GameClient {
 		partialTicks = (float)((double)(System.nanoTime() - lastTick) / 50000000D);
 		totalTicksF = totalTicksI + partialTicks;
 		
-		if(!context.contextLost()) globalRenderer.renderGame(scene);
+		if(!context.contextLost()) {
+			globalRenderer.renderGame(scene);
+		}else {
+			Util.sleep(50l);
+		}
 		
 		context.swapBuffers(false);
 		
