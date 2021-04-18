@@ -194,7 +194,7 @@ public class GlobalRenderer {
 		
 		
 		
-		this.rand = new Random();
+		this.rand = new Random("dgfgfgdfgaga".hashCode());
 		
 		try {
 			InputStream stream;

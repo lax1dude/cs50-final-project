@@ -58,6 +58,7 @@ uniform vec2 screenSizeInv;
 vec3 getPosition(sampler2D dt, vec2 coord) {
 	float depth = texture(dt, coord).r;
 	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	if(tran.w == 0.0) return vec3(0.0);
 	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
 }
 
@@ -119,7 +120,7 @@ void main() {
 	float r = materialV.g;
 	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, -1.0));
 	vec3 specularIBLValue;
-	if(r < 0.2 || materialV.a > 0.0) {
+	if(r < 0.2) {
 		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : sampleCubemap(normPos, normalC);
 	}else if(r < 0.4) {
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25)).rgb;
@@ -144,3 +145,4 @@ void main() {
 }
 
 #endif
+	

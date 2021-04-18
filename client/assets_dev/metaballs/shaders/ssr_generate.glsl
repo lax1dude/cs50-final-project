@@ -34,12 +34,14 @@ uniform mat4 matrix_p;
 vec3 getPosition(sampler2D dt, vec2 coord) {
 	float depth = texture(dt, coord).r;
 	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	if(tran.w == 0.0) return vec3(0.0);
 	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
 }
 
 vec3 getPosition2(sampler2D dt, vec2 coord) {
 	float depth = texture(dt, coord).r;
 	vec4 tran = matrix_p_inv * vec4(coord * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	if(tran.w == 0.0) return vec3(0.0);
 	return tran.xyz / tran.w;
 }
 
@@ -60,6 +62,7 @@ vec4 calculateSSR(vec3 pos, vec3 norm2) {
 		pos2 += norm * 0.25 * step;
 		
 		uv = matrix_p * vec4(pos2, 1.0);
+		if(uv.w == 0.0) uv.w = 0.0001;
 		uv.xyz /= uv.w;
 		uv.xyz = uv.xyz * 0.5 + 0.5;
 		
@@ -74,6 +77,7 @@ vec4 calculateSSR(vec3 pos, vec3 norm2) {
 				float dist2; vec4 uv2;
 				for(int j = 0; j < 3; ++j) {
 					uv2 = matrix_p * vec4(pos3, 1.0);
+					if(uv2.w == 0.0) uv2.w = 0.0001;
 					uv2.xyz /= uv2.w;
 					uv2.xyz = uv2.xyz * 0.5 + 0.5;
 					if(!isInTexture(uv2.xyz)) return vec4(0.0);
@@ -87,6 +91,7 @@ vec4 calculateSSR(vec3 pos, vec3 norm2) {
 				}
 				uv2 = matrix_p * vec4(pos3, 1.0);
 				uv2.xy /= uv2.w;
+				if(uv2.w == 0.0) uv2.w = 0.0001;
 				uv2.xy = clamp(uv2.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
 				return vec4(texture(prevFrame, uv2.xy).rgb, 1.0);
 			//}
