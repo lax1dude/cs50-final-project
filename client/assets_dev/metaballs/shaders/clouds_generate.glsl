@@ -35,17 +35,14 @@ float noiseFunction(vec3 pos) {
 	return remap(remap(perlinWorley, wfbm - 1.0, 1.0, 0.0, 1.0), (1.0 - cloudDensity), 1.0, 0.0, 1.0);
 }
 
-float PI = 3.14159265;
-vec3 dirFromLongAndLat(vec2 longAndLat) {
-	vec2 angles = vec2(longAndLat.x * PI, (longAndLat.y + 1.0) * PI * 0.25);
-	return vec3(sin(angles.x) * sin(angles.y), cos(angles.y), cos(angles.x) * sin(angles.y));
-}
-
 void main() {
 	
 	float scale = 0.01;
 	
-	vec3 rayDirection = dirFromLongAndLat(posV.xy);
+	float dotL = dot(posV.xy, posV.xy);
+	if(dotL > 1.05) discard;
+	
+	vec3 rayDirection = normalize(vec3(posV.x, (1.0 - sqrt(dotL)), -posV.y));
 	
 	float density = 0.0;
 	

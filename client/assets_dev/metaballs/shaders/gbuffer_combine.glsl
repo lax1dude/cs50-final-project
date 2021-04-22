@@ -62,18 +62,10 @@ vec3 getPosition(sampler2D dt, vec2 coord) {
 	return (matrix_v_inv * vec4(tran.xyz / tran.w, 1.0)).xyz;
 }
 
-float invPI = 0.318309886;
-vec2 clipSpaceFromDir(vec3 dir) {
-    return vec2(
-        atan(dir.x, dir.z) * invPI,
-        acos(dir.y) * invPI * 2.0 - 1.0
-    );
-}
-
-vec2 clipSpaceFromDir2(vec3 dir) {
+vec2 uvFromDir2(vec3 dir) {
 	dir.xz /= abs(dir.y) + 1.0;
 	dir.xz = dir.xz * 0.5 + 0.5;
-    if(dir.y < 0.0) {
+	if(dir.y < 0.0) {
 		return dir.xz * vec2(0.5, 1.0);
 	}else {
 		return dir.xz * vec2(0.5, 1.0) + vec2(0.5, 0.0);
@@ -81,7 +73,7 @@ vec2 clipSpaceFromDir2(vec3 dir) {
 }
 
 vec3 sampleIrradianceTexture(vec3 dir) {
-	vec2 pos = clipSpaceFromDir2(dir * vec3(-1.0, -1.0, -1.0));
+	vec2 pos = uvFromDir2(dir * vec3(-1.0, -1.0, -1.0));
 	return mix(texture(irradianceMapA, pos).rgb, texture(irradianceMapB, pos).rgb, irradianceMapBlend);
 }
 
@@ -91,10 +83,9 @@ vec3 sampleCubemap(vec3 normPos, vec3 normalC) {
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
-} 
+}
 
 void main() {
-
 	diffuseV = texture(diffuse, v_texCoord);
 	materialV = texture(material, v_texCoord);
 	normalV = texture(normal, v_texCoord);
@@ -118,14 +109,14 @@ void main() {
 	}
 	
 	float r = materialV.g;
-	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, -1.0));
+	vec2 specularIBLpos = uvFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, -1.0));
 	vec3 specularIBLValue;
 	/*
 	if(r < 0.1) {
 		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : sampleCubemap(normPos, normalC);
 	}else */
 	if(r < 0.2) {
-		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25)).rgb;
+		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : texture(specularIBL, specularIBLpos * vec2(1.0, 0.25)).rgb;
 	}else if(r < 0.4) {
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.25)).rgb;
 	}else if(r < 0.6){

@@ -37,6 +37,7 @@ uniform sampler2D tex;
 
 uniform vec3 sunDirection;
 uniform vec3 sunRGB;
+uniform float emissionFactor;
 
 void main() {
 	vec2 ttex = fract(v_texCoord);
@@ -45,9 +46,9 @@ void main() {
 	
     vec4 diffuse2 = computeSunlight(
 		pow(materialA.rgb, vec3(2.2)),
-		normalize(v_normal * 2.0 - 1.0),
+		normalize(v_normal),
 		v_pos, sunDirection, sunRGB,
-		vec4(materialC.r, materialC.g, materialC.b, materialA.a)
+		vec4(materialC.r, materialC.g, materialC.b, materialA.a * emissionFactor)
 	);
 	if(diffuse2.a == 0.0) discard;
 	diffuse = diffuse2.rgb;

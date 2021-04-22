@@ -27,6 +27,15 @@ public class ModelObjectRenderer extends ObjectRenderer {
 			RenderPass.SHADOW_D
 	};
 
+	public static final RenderPass[] passes_medium_object_opaque = new RenderPass[] {
+			RenderPass.G_BUFFER,
+			RenderPass.CUBEMAP,
+			RenderPass.REFLECTION,
+			RenderPass.LIGHT_SHADOW,
+			RenderPass.SHADOW_A,
+			RenderPass.SHADOW_B
+	};
+
 	public static final RenderPass[] passes_small_object_opaque = new RenderPass[] {
 			RenderPass.G_BUFFER,
 			RenderPass.LIGHT_SHADOW,
@@ -52,6 +61,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	public float specular;
 	public float ssr;
 	public float emission;
+	public float emissionFactor = 1.0f;
 	
 	public boolean diffuseOverride = false;
 	public float r = 0.0f;
@@ -73,6 +83,11 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	
 	public ModelObjectRenderer setDither(float dither) {
 		this.ditherBlend = dither;
+		return this;
+	}
+	
+	public ModelObjectRenderer setEmissionFactor(float emissionFactor) {
+		this.emissionFactor = emissionFactor;
 		return this;
 	}
 	
@@ -128,12 +143,13 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.gbuffer_3f_4b_uniform_metallic.set1f(metallic);
 				m.gbuffer_3f_4b_uniform_roughness.set1f(roughness);
 				m.gbuffer_3f_4b_uniform_ssr.set1f(ssr);
-				m.gbuffer_3f_4b_uniform_emission.set1f(emission);
+				m.gbuffer_3f_4b_uniform_emission.set1f(emission * emissionFactor);
 				m.gbuffer_3f_4b_uniform_diffuseColor.set3f(r, g, b);
 				globalRenderer.updateMatrix(m.gbuffer_3f_4b_uniform);
 			}else if(materialFromTexture) {
 				m.gbuffer_3f_4b_2f_materialTexture2D.use();
 				m.gbuffer_3f_4b_2f_materialTexture2D_ditherBlend.set1f(ditherBlend);
+				m.gbuffer_3f_4b_2f_materialTexture2D_emissionFactor.set1f(emissionFactor);
 				globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_materialTexture2D);
 				GLStateManager.bindTexture2D(texture2D);
 			}else {
@@ -143,7 +159,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.gbuffer_3f_4b_2f_uniform_metallic.set1f(metallic);
 				m.gbuffer_3f_4b_2f_uniform_roughness.set1f(roughness);
 				m.gbuffer_3f_4b_2f_uniform_ssr.set1f(ssr);
-				m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission);
+				m.gbuffer_3f_4b_2f_uniform_emission.set1f(emission * emissionFactor);
 				globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_uniform);
 				GLStateManager.bindTexture2D(texture2D);
 			}
@@ -162,7 +178,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_uniform_specular.set1f(specular);
 				m.cubemap_3f_4b_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_uniform_roughness.set1f(roughness);
-				m.cubemap_3f_4b_uniform_emission.set1f(emission);
+				m.cubemap_3f_4b_uniform_emission.set1f(emission * emissionFactor);
 				m.cubemap_3f_4b_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_uniform_sunRGB.set3f(
@@ -174,6 +190,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				globalRenderer.updateMatrix(m.cubemap_3f_4b_uniform);
 			}else if(materialFromTexture) {
 				m.cubemap_3f_4b_2f_materialTexture2D.use();
+				m.cubemap_3f_4b_2f_materialTexture2D_emissionFactor.set1f(emissionFactor);
 				m.cubemap_3f_4b_2f_materialTexture2D_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_2f_materialTexture2D_sunRGB.set3f(
 						globalRenderer.colorTemperatures.getLinearR(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
@@ -187,7 +204,7 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.cubemap_3f_4b_2f_uniform_specular.set1f(specular);
 				m.cubemap_3f_4b_2f_uniform_metallic.set1f(metallic);
 				m.cubemap_3f_4b_2f_uniform_roughness.set1f(roughness);
-				m.cubemap_3f_4b_2f_uniform_emission.set1f(emission);
+				m.cubemap_3f_4b_2f_uniform_emission.set1f(emission * emissionFactor);
 				m.cubemap_3f_4b_2f_uniform_shadowMatrix.setMatrix4f(globalRenderer.sunShadowProjViewB);
 				m.cubemap_3f_4b_2f_uniform_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
 				m.cubemap_3f_4b_2f_uniform_sunRGB.set3f(

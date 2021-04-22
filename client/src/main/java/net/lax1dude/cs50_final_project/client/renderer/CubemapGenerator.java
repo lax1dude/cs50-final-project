@@ -1,17 +1,5 @@
 package net.lax1dude.cs50_final_project.client.renderer;
 
-import static org.lwjgl.opengles.GLES20.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengles.GLES20.GL_CULL_FACE;
-import static org.lwjgl.opengles.GLES20.GL_DEPTH_TEST;
-import static org.lwjgl.opengles.GLES20.GL_NEAREST;
-import static org.lwjgl.opengles.GLES20.glBindFramebuffer;
-import static org.lwjgl.opengles.GLES20.glClear;
-import static org.lwjgl.opengles.GLES20.glClearColor;
-import static org.lwjgl.opengles.GLES20.glDisable;
-import static org.lwjgl.opengles.GLES20.glViewport;
-import static org.lwjgl.opengles.GLES30.GL_DRAW_FRAMEBUFFER;
-import static org.lwjgl.opengles.GLES30.GL_READ_FRAMEBUFFER;
-import static org.lwjgl.opengles.GLES30.glBlitFramebuffer;
 import static org.lwjgl.opengles.GLES30.*;
 
 import java.nio.ByteBuffer;
@@ -100,6 +88,8 @@ class CubemapGenerator {
 		
 		this.specularIBLBlurA.bindFramebuffer();
 		glViewport(0, 0, GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution / 2);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 		this.bindCubemap(0);
 		this.renderer.progManager.specular_map_generate.use();
 		this.renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
@@ -110,18 +100,14 @@ class CubemapGenerator {
 			
 			this.specularIBLBlurB.bindFramebuffer();
 			this.specularIBLBlurA.bindColorTexture(0, 0);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			this.renderer.progManager.specular_map_blur.use();
-			this.renderer.progManager.specular_map_blur_screenSizeInv.set2f((float)(i + 1) / (GameConfiguration.cubeMapResolution), 0.0f);
+			this.renderer.progManager.specular_map_blur_screenSizeInv.set2f((float)(i + 2) / (256), 0.0f);
 			this.renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
 			
 			this.specularIBLBlurA.bindFramebuffer();
 			this.specularIBLBlurB.bindColorTexture(0, 0);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			this.renderer.progManager.specular_map_blur.use();
-			this.renderer.progManager.specular_map_blur_screenSizeInv.set2f(0.0f, (float)(i + 1) / (GameConfiguration.cubeMapResolution / 2));
+			this.renderer.progManager.specular_map_blur_screenSizeInv.set2f(0.0f, (float)(i + 2) / (256));
 			this.renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
 			
 			glBindFramebuffer(GL_READ_FRAMEBUFFER, specularIBLBlurA.glObject);

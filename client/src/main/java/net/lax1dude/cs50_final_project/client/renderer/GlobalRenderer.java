@@ -127,6 +127,7 @@ public class GlobalRenderer {
 	public final MaterialTexture2D moss;
 	public final MaterialTexture2D marble;
 	public final MaterialTexture2D wood;
+	public final MaterialTexture2D building;
 	
 	public float exposure = 2.0f;
 	public float targetExposure = 2.0f;
@@ -233,23 +234,27 @@ public class GlobalRenderer {
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
 
 		MaterialFile mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/metal.mtl"));
-		metal = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		metal = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
 		mt.destroy();
 		
 		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/bricks.mtl"));
-		bricks = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		bricks = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
 		mt.destroy();
 
 		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/moss.mtl"));
-		moss = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		moss = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
 		mt.destroy();
 		
 		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/marble.mtl"));
-		marble = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		marble = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
 		mt.destroy();
 		
 		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/wood.mtl"));
-		wood = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		wood = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
+		mt.destroy();
+		
+		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/building.mtl"));
+		building = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 1.0f);
 		mt.destroy();
 		
 		displayLoadingText("loading meshes");
@@ -324,6 +329,9 @@ public class GlobalRenderer {
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, moss.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, -5.0d));
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, marble.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, 1.0d));
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, wood.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, 7.0d));
+			
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, building.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()).setEmissionFactor(1.0f).setPosition(-10.0d, 1.1d, 7.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, building.glObject, ModelObjectRenderer.passes_all_opaque, client.getScene()).setEmissionFactor(1.0f).setPosition(-10.0d, 3.1d, 7.0d));
 
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, bricks.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-4.0d, 5.1d, -5.0d));
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, metal.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-10.0d, 5.1d, -5.0d));
@@ -424,9 +432,8 @@ public class GlobalRenderer {
 		sd.set(0.0f, -1.0f, 0.0f);
 		sd.rotateZ(((scene.time / 24000.0f / 27.0f * 360.0f) % 360.0f) * MathUtil.toRadians);
 		sd.rotateY(5.0f * MathUtil.toRadians);
-		sd.rotateZ((((12000 + scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
+		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
 		sd.rotateY(18.5f * MathUtil.toRadians);
-		sd.rotateZ(180.0f * MathUtil.toRadians);
 		
 		scene.skyBrightness = scene.enableSun ? timeOfDay * 2.0f : 0.0f;
 		scene.sunBrightness = scene.enableSun ? 200.0f : 0.0f;
@@ -518,7 +525,7 @@ public class GlobalRenderer {
 		
 		modelMatrix.clear();
 		
-		testModelRenderer.setMaterial(0.0f, 0.0f, 0.4f, 0.5f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.7f, 0.5f, 0.0f, 0.0f);
 		
 		longArmsRenderer.setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f);
 		longArmsRenderer.setPosition(0.0d, 0.0d, 0.0d).setRotation(0.0f, (client.totalTicksF * 2f) % 360.0f, 0.0f);
@@ -1518,8 +1525,8 @@ public class GlobalRenderer {
 		progManager.post_tonemap.use();
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
-		//unicodeTextRenderer.bindTexture();
-		//cubemapGenerator.bindIrradianceTextureA(0);
+		//bricks.bindTexture(0);
+		//cubemapGenerator.bindSpecularIBLTexture(0);
 		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
@@ -1611,7 +1618,7 @@ public class GlobalRenderer {
 				
 				glEnable(GL_BLEND);
 				modelMatrix.rotate(180.0f * MathUtil.toRadians, 0.0f, 0.0f, 1.0f);
-				modelMatrix.rotateTowards(scene.moonDirection.x, scene.moonDirection.y, scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
+				modelMatrix.rotateTowards(-scene.moonDirection.x, -scene.moonDirection.y, -scene.moonDirection.z, 0.0f, 0.0f, 1.0f);
 				modelMatrix.translate(0.0f, 0.0f, 15.0f);
 				
 				if(scene.sunDirection.y > -0.1f) {
@@ -1995,6 +2002,7 @@ public class GlobalRenderer {
 		this.moss.destroy();
 		this.marble.destroy();
 		this.wood.destroy();
+		this.building.destroy();
 		RenderUtil.instance.destroy();
 	}
 

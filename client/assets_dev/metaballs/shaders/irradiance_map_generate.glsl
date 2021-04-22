@@ -21,16 +21,6 @@ layout(location = 0) out vec3 fragOut;
 
 uniform samplerCube cubeMap;
 
-vec3 dirFromLongAndLat(vec2 texIn) {
-    if(texIn.x < 0.5) {
-        vec2 latLong = vec2(texIn.x * 4.0 - 1.0, texIn.y * 2.0 - 1.0);
-        return normalize(vec3(latLong.x, -(1.0 - length(latLong)), -latLong.y));
-    }else {
-        vec2 latLong = vec2((texIn.x - 0.5) * 4.0 - 1.0, texIn.y * 2.0 - 1.0);
-        return normalize(vec3(latLong.x, (1.0 - length(latLong)), -latLong.y));
-    }
-}
-
 float PI = 3.14159265;
 vec3 sampl(vec3 dir) {
 	vec3 irradiance = vec3(0.0);   
@@ -56,9 +46,17 @@ vec3 sampl(vec3 dir) {
 }
 
 void main() {
-	vec2 texCoord = texInV.xy;
-	vec3 rayDirection = dirFromLongAndLat(texCoord);
-	fragOut = sampl(rayDirection); //texture(cubeMap, rayDirection).rgb;
+	if(texInV.x < 0.5) {
+        vec2 latLong = vec2(texInV.x * 4.0 - 1.0, texInV.y * 2.0 - 1.0);
+		float dotL = dot(latLong, latLong);
+		if(dotL > 1.05) discard;
+        fragOut = sampl(normalize(vec3(latLong.x, -(1.0 - sqrt(dotL)), -latLong.y)));
+    }else {
+        vec2 latLong = vec2((texInV.x - 0.5) * 4.0 - 1.0, texInV.y * 2.0 - 1.0);
+		float dotL = dot(latLong, latLong);
+		if(dotL > 1.05) discard;
+        fragOut = sampl(normalize(vec3(latLong.x, (1.0 - sqrt(dotL)), -latLong.y)));
+    }
 }
 
 #endif

@@ -54,12 +54,6 @@ uniform sampler2D starsTexture;
 uniform float cloudTextureBlend;
 
 float invPI = 0.318309886;
-vec2 clipSpaceFromDir180(vec3 dir) {
-	return vec2(
-		atan(dir.x, dir.z) * invPI,
-        acos(dir.y) * invPI * 4.0 - 1.0
-	);
-}
 vec2 clipSpaceFromDir360(vec3 dir) {
     return vec2(
         atan(-dir.x, dir.z) * invPI,
@@ -71,7 +65,11 @@ void main() {
 	vec3 normal = normalize(normalv);
 	
 	float sunBrightness = max(dot(normal, -sunDirection), 0.0);
-	vec2 cloudMapPos = clipSpaceFromDir180(-normal) * 0.5 + 0.5;
+	
+	vec3 dir = -normal;
+	dir.xz /= abs(dir.y) + 1.0;
+	dir.xz = dir.xz * 0.5 + 0.5;
+	vec2 cloudMapPos = dir.xz;
 	
 	float riseFac = clamp((sunDirection.y + 0.1), 0.1, 1.0);
 	riseFac *= riseFac;
@@ -95,7 +93,7 @@ void main() {
 		colorv +
 		sunColor * (pow(sunBrightness, 300.0f / sunSize) * pow(max(1.0 - cloudMapSample * 100.0 - darkness * 10.0, 0.0), 2.0)) +
 		cloudColor * (cloudMapSample /* clamp(pow(sunBrightness, 2.0f / sunSize) * 2.0, 1.0, 100.0)*/) +
-		pow(texture(starsTexture, clipSpaceFromDir360(TBN * -normal) * 0.5 + 0.5).rgb, vec3(4.0)) * 0.5 * riseFac,
+		pow(texture(starsTexture, clipSpaceFromDir360(TBN * -normal) * 0.5 + 0.5).rgb, vec3(4.0)) * 0.25 * riseFac,
 		vec3(0.0),
 		darkness * 0.9
 	);

@@ -35,6 +35,7 @@ layout(location = 2) out vec4 normal;   // normalXYZ, emission
 uniform sampler2D tex;
 
 uniform float ditherBlend;
+uniform float emissionFactor;
 
 mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv) {
     vec3 dp1 = dFdx(p);
@@ -58,10 +59,8 @@ void main() {
 	vec4 materialC = texture(tex, vec2(ttex.x * 0.333333 + 0.666666, ttex.y));
 	
     diffuse = vec4(pow(materialA.rgb, vec3(2.2)), ditherBlend);
+	normal = vec4((cotangent_frame(normalize(v_normal.xyz), normalize(v_viewdir), v_texCoord) * (materialB.xyz * 2.0 - 1.0)) * 0.5 + 0.5, materialA.a * emissionFactor);
 	material = materialC;
-	
-	vec3 bump = materialB.xyz * 2.0 - 1.0;
-	normal = vec4((cotangent_frame(normalize(v_normal.xyz), normalize(v_viewdir), v_texCoord) * bump) * 0.5 + 0.5, materialA.a);
 }
 
 #endif

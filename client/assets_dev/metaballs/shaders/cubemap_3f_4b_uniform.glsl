@@ -44,7 +44,7 @@ uniform vec3 diffuseColor;
 void main() {
     vec4 diffuse2 = computeSunlight(
 		diffuseColor,
-		normalize(v_normal * 2.0 - 1.0),
+		normalize(v_normal),
 		v_pos, sunDirection, sunRGB,
 		vec4(metallic, roughness, specular, emission)
 	);

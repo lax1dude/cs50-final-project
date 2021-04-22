@@ -21,18 +21,18 @@ layout(location = 0) out vec3 fragOut;
 
 uniform samplerCube cubeMap;
 
-vec3 dirFromLongAndLat(vec2 texIn) {
-	if(texIn.x < 0.5) {
-		vec2 latLong = vec2(texIn.x * 4.0 - 1.0, texIn.y * 2.0 - 1.0);
-		return normalize(vec3(latLong.x, -(1.0 - length(latLong)), -latLong.y));
-	}else {
-		vec2 latLong = vec2((texIn.x - 0.5) * 4.0 - 1.0, texIn.y * 2.0 - 1.0);
-		return normalize(vec3(latLong.x, (1.0 - length(latLong)), -latLong.y));
-	}
-}
-
 void main() {
-	fragOut = texture(cubeMap, dirFromLongAndLat(texInV)).rgb;
+	if(texInV.x < 0.5) {
+        vec2 latLong = vec2(texInV.x * 4.0 - 1.0, texInV.y * 2.0 - 1.0);
+		float dotL = dot(latLong, latLong);
+		if(dotL > 1.05) discard;
+        fragOut = texture(cubeMap, normalize(vec3(latLong.x, -(1.0 - sqrt(dotL)), -latLong.y))).rgb;
+    }else {
+        vec2 latLong = vec2((texInV.x - 0.5) * 4.0 - 1.0, texInV.y * 2.0 - 1.0);
+		float dotL = dot(latLong, latLong);
+		if(dotL > 1.05) discard;
+        fragOut = texture(cubeMap, normalize(vec3(latLong.x, (1.0 - sqrt(dotL)), -latLong.y))).rgb;
+    }
 }
 
 #endif
