@@ -8,7 +8,10 @@ public class GLStateManager {
 	private static int boundTextureUnit = GL_TEXTURE0;
 
 	public static final void bindTexture2D(int tex) {
-		bindTexture2D(tex, 0);
+		if(boundTexture2D[0] != tex) {
+			if(boundTextureUnit != GL_TEXTURE0) glActiveTexture(boundTextureUnit = GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, boundTexture2D[0] = tex);
+		}
 	}
 	
 	public static final void bindTexture2D(int tex, int slot) {

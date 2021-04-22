@@ -105,6 +105,8 @@ public class GameClient {
 		scene = new RenderScene();
 		globalRenderer = new GlobalRenderer(this);
 
+		globalRenderer.destroyLoadingText();
+		
 		int w = context.getInnerWidth();
 		int h = context.getInnerHeight();
 		context.setMouseGrabbed(true);
@@ -255,8 +257,8 @@ public class GameClient {
 		cameraPitchAccel *= rdecell;
 		cameraYawAccel *= rdecell;
 		
-		scene.time = 16000;
-		//scene.time += 10;
+		//scene.time = 16000;
+		scene.time += 1;
 		globalRenderer.tick();
 		
 	}

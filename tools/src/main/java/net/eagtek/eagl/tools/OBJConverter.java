@@ -16,7 +16,7 @@ import org.lwjgl.util.lz4.LZ4;
 
 public class OBJConverter {
 	
-	public static void convertModel(String in, boolean index, boolean texture, boolean normal, boolean compress, boolean index32, OutputStream out) throws IOException {
+	public static void convertModel(String in, boolean index, boolean texture, boolean normal, boolean tangent, boolean compress, boolean index32, OutputStream out) throws IOException {
 		String[] lines = in.split("\n");
 		for(int i = 0; i < lines.length; i++) {
 			lines[i] = lines[i].replace("\r", "");
@@ -63,7 +63,10 @@ public class OBJConverter {
 			}
 		}
 		
+		List<float[]> tangents = new ArrayList();
+		
 		for(int[][] f : faces) {
+			
 			for(int i = 0; i < 3; i++) {
 				byte[] b = new byte[24];
 				
@@ -102,7 +105,8 @@ public class OBJConverter {
 		}
 		
 		if(index) {
-			for(byte[] v : vboentries) {
+			for(int j = 0; j < vboentries.size(); ++j) {
+				byte v[] = vboentries.get(j);
 				int l = indexablevboentries.size();
 				boolean flag = true;
 				for(int i = 0; i < l; i++) {
@@ -128,13 +132,16 @@ public class OBJConverter {
 		
 		int flags = 0;
 		int componentLen = 12;
+		int componentLen2 = 12;
 		if(index) flags |= 1;
 		if(texture) {
 			componentLen += 8;
+			componentLen2 += 8;
 			flags |= 2;
 		}
 		if(normal) {
 			componentLen += 4;
+			componentLen2 += 4;
 			flags |= 4;
 		}
 		if(compress) flags |= 8;
@@ -148,8 +155,9 @@ public class OBJConverter {
 		if(index) {
 			o.writeInt(indexablevboentries.size());
 			o.writeInt(indexbuffer.size());
-			for(byte[] b : indexablevboentries) {
-				data.write(b, 0, componentLen);
+			for(int i = 0; i < indexablevboentries.size(); ++i) {
+				byte[] b = indexablevboentries.get(i);
+				data.write(b, 0, componentLen2);
 			}
 			for(int i : indexbuffer) {
 				if(index32) {
@@ -165,8 +173,12 @@ public class OBJConverter {
 		}else {
 			o.writeInt(vboentries.size());
 			o.writeInt(0);
-			for(byte[] b : vboentries) {
-				data.write(b, 0, componentLen);
+			for(int i = 0; i < vboentries.size(); ++i) {
+				byte[] b = vboentries.get(i);
+				data.write(b, 0, componentLen2);
+				if(tangent) {
+					data.write(tanToBytes(tangents.get(i)));
+				}
 			}
 		}
 		
@@ -223,6 +235,10 @@ public class OBJConverter {
 		
 		o.flush();
 		
+	}
+	
+	private static byte[] tanToBytes(float[] tan) {
+		return new byte[] {(byte)(int)(tan[0] * 127.0f), (byte)(int)(tan[1] * 127.0f), (byte)(int)(tan[2] * 127.0f), (byte)0};
 	}
 	
 }

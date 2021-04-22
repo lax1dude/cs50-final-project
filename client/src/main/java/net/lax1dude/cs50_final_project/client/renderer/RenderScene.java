@@ -26,7 +26,7 @@ public class RenderScene {
 	
 	public float sunBrightnessFac = 1.0f;
 	public float skyBrightnessFac = 1.0f;
-	public float sunSize = 0.1f;
+	public float sunSize = 0.15f;
 	public float fogDensity = 0.005f;
 	public boolean lightShafts = true;
 	public boolean enableSun = true;

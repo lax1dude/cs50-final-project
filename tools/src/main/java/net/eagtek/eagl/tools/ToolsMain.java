@@ -64,7 +64,7 @@ public class ToolsMain extends JFrame {
 		setResizable(false);
 		setTitle("eagl engine utils");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 382, 231);
+		setBounds(100, 100, 382, 321);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -126,5 +126,23 @@ public class ToolsMain extends JFrame {
 		btnFontGenerator.setFont(new Font("Dialog", Font.BOLD, 17));
 		btnFontGenerator.setBounds(16, 104, 350, 82);
 		contentPane.add(btnFontGenerator);
+		
+		JButton btnMaterialGenerator = new JButton("Material Generator");
+		btnMaterialGenerator.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				EventQueue.invokeLater(new Runnable() {
+					public void run() {
+						MaterialConverterWindow win = new MaterialConverterWindow(ToolsMain.this);
+						win.setVisible(true);
+					}
+				});
+			}
+		});
+		btnMaterialGenerator.setIcon(new ImageIcon(ToolsMain.class.getResource("/icons/materialgen.png")));
+		btnMaterialGenerator.setIconTextGap(20);
+		btnMaterialGenerator.setHorizontalAlignment(SwingConstants.LEADING);
+		btnMaterialGenerator.setFont(new Font("Dialog", Font.BOLD, 17));
+		btnMaterialGenerator.setBounds(16, 197, 350, 82);
+		contentPane.add(btnMaterialGenerator);
 	}
 }

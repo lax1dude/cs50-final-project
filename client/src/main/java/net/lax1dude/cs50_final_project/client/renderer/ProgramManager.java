@@ -217,6 +217,13 @@ public class ProgramManager {
 	public EaglProgram text_color;
 	public EaglUniform text_color_fontSizePixelsOverTextureDimensions;
 	
+	public EaglProgram gbuffer_3f_4b_2f_materialTexture2D;
+	public EaglUniform gbuffer_3f_4b_2f_materialTexture2D_ditherBlend;
+	
+	public EaglProgram cubemap_3f_4b_2f_materialTexture2D;
+	public EaglUniform cubemap_3f_4b_2f_materialTexture2D_sunDirection;
+	public EaglUniform cubemap_3f_4b_2f_materialTexture2D_sunRGB;
+	
 	public void refresh() {
 		String source; EaglShader vsh; EaglShader fsh;
 		
@@ -707,6 +714,23 @@ public class ProgramManager {
 		text_color.getUniform("tex").set1i(0);
 		text_color_fontSizePixelsOverTextureDimensions = text_color.getUniform("fontSizePixelsOverTextureDimensions");
 		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/gbuffer_3f_4b_2f_materialTexture2D.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "gbuffer_3f_4b_2f_materialTexture2D.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "gbuffer_3f_4b_2f_materialTexture2D.fsh");
+		this.gbuffer_3f_4b_2f_materialTexture2D = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		gbuffer_3f_4b_2f_materialTexture2D.getUniform("tex").set1i(0);
+		gbuffer_3f_4b_2f_materialTexture2D_ditherBlend = gbuffer_3f_4b_2f_materialTexture2D.getUniform("ditherBlend");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/cubemap_3f_4b_2f_materialTexture2D.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "cubemap_3f_4b_2f_materialTexture2D.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "cubemap_3f_4b_2f_materialTexture2D.fsh");
+		this.cubemap_3f_4b_2f_materialTexture2D = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		cubemap_3f_4b_2f_materialTexture2D.getUniform("tex").set1i(0);
+		cubemap_3f_4b_2f_materialTexture2D_sunDirection = cubemap_3f_4b_2f_materialTexture2D.getUniform("sunDirection");
+		cubemap_3f_4b_2f_materialTexture2D_sunRGB = cubemap_3f_4b_2f_materialTexture2D.getUniform("sunRGB");
+		
 	}
 	
 	private static final float lerp(float a, float b, float f){
@@ -760,6 +784,8 @@ public class ProgramManager {
 		specular_map_generate.destroy();
 		specular_map_blur.destroy();
 		text_color.destroy();
+		gbuffer_3f_4b_2f_materialTexture2D.destroy();
+		cubemap_3f_4b_2f_materialTexture2D.destroy();
 	}
 
 }

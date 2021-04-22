@@ -23,6 +23,7 @@ public class EaglModelLoader {
 			boolean compress = (flags & 8) == 8;
 			boolean index32 = (flags & 16) == 16;
 			boolean newFormat = (flags & 32) == 32;
+			boolean tangent = (flags & 64) == 64;
 			
 			d.readUTF();
 
@@ -32,6 +33,7 @@ public class EaglModelLoader {
 			int componentLen = 12;
 			if(texture) componentLen += 8;
 			if(normal) componentLen += 4;
+			if(tangent) componentLen += 4;
 
 			float minX = 0.0f; float minY = 0.0f; float minZ = 0.0f;
 			float maxX = 0.0f; float maxY = 0.0f; float maxZ = 0.0f;
@@ -86,6 +88,11 @@ public class EaglModelLoader {
 			}
 			if(texture) {
 				list.add(EaglVertexArray.attrib(0, slot++, 2, GLDataType.FLOAT, false, componentLen, componentLen2));
+				componentLen2 += 8;
+			}
+			if(tangent) {
+				list.add(EaglVertexArray.attrib(0, slot++, 4, GLDataType.BYTE, true, componentLen, componentLen2));
+				componentLen2 += 4;
 			}
 			
 			EaglVertexArray vao = new EaglVertexArray(new EaglVertexBuffer[] { new EaglVertexBuffer() }, list.toArray(new VertexAttribPointer[0]), index ? new EaglIndexBuffer(index32 ? GLDataType.INT_U : GLDataType.SHORT_U) : null);

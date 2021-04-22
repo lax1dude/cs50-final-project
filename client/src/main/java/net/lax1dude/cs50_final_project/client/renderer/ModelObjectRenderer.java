@@ -58,13 +58,21 @@ public class ModelObjectRenderer extends ObjectRenderer {
 	public float g = 0.0f;
 	public float b = 0.0f;
 	
+	public boolean materialFromTexture = true;
+	
 	public ModelObjectRenderer setMaterial(float ditherBlend, float metallic, float roughness, float specular, float ssr, float emission) {
+		materialFromTexture = false;
 		this.ditherBlend = ditherBlend;
 		this.metallic = metallic;
 		this.roughness = roughness;
 		this.specular = specular;
 		this.ssr = ssr;
 		this.emission = emission;
+		return this;
+	}
+	
+	public ModelObjectRenderer setDither(float dither) {
+		this.ditherBlend = dither;
 		return this;
 	}
 	
@@ -123,6 +131,11 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				m.gbuffer_3f_4b_uniform_emission.set1f(emission);
 				m.gbuffer_3f_4b_uniform_diffuseColor.set3f(r, g, b);
 				globalRenderer.updateMatrix(m.gbuffer_3f_4b_uniform);
+			}else if(materialFromTexture) {
+				m.gbuffer_3f_4b_2f_materialTexture2D.use();
+				m.gbuffer_3f_4b_2f_materialTexture2D_ditherBlend.set1f(ditherBlend);
+				globalRenderer.updateMatrix(m.gbuffer_3f_4b_2f_materialTexture2D);
+				GLStateManager.bindTexture2D(texture2D);
 			}else {
 				m.gbuffer_3f_4b_2f_uniform.use();
 				m.gbuffer_3f_4b_2f_uniform_ditherBlend.set1f(ditherBlend);
@@ -159,6 +172,16 @@ public class ModelObjectRenderer extends ObjectRenderer {
 				);
 				m.cubemap_3f_4b_uniform_diffuseColor.set3f(r, g, b);
 				globalRenderer.updateMatrix(m.cubemap_3f_4b_uniform);
+			}else if(materialFromTexture) {
+				m.cubemap_3f_4b_2f_materialTexture2D.use();
+				m.cubemap_3f_4b_2f_materialTexture2D_sunDirection.set3f(scene.sunDirection.x, scene.sunDirection.y, scene.sunDirection.z);
+				m.cubemap_3f_4b_2f_materialTexture2D_sunRGB.set3f(
+						globalRenderer.colorTemperatures.getLinearR(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearG(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f,
+						globalRenderer.colorTemperatures.getLinearB(scene.cubemapSunKelvin) * scene.cubemapSunBrightness * 0.1f
+				);
+				globalRenderer.updateMatrix(m.cubemap_3f_4b_2f_materialTexture2D);
+				GLStateManager.bindTexture2D(texture2D);
 			}else {
 				m.cubemap_3f_4b_2f_uniform.use();
 				m.cubemap_3f_4b_2f_uniform_specular.set1f(specular);

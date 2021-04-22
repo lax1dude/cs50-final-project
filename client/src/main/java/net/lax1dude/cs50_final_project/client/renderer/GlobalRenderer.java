@@ -1,5 +1,7 @@
 package net.lax1dude.cs50_final_project.client.renderer;
 
+import static org.lwjgl.opengles.GLES20.GL_FRAGMENT_SHADER;
+import static org.lwjgl.opengles.GLES20.GL_VERTEX_SHADER;
 import static org.lwjgl.opengles.GLES30.*;
 
 import java.io.InputStream;
@@ -25,7 +27,9 @@ import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglFramebuffer;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglImage2D;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglModelLoader;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglProgram;
+import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglShader;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglTessellator;
+import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglUniform;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglVertexArray;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglVertexBuffer;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.GLDataType;
@@ -75,6 +79,9 @@ public class GlobalRenderer {
 	private EaglVertexArray skyDomeSmall = null;
 	private EaglVertexArray testSphere = null;
 	private EaglVertexArray testMirror = null;
+
+	private EaglVertexArray texCube = null;
+	private EaglVertexArray texSphere = null;
 	
 	private ShadowLightRenderer lightTest = null;
 
@@ -111,8 +118,15 @@ public class GlobalRenderer {
 	public final RenderLightBulbs lightBulbRenderer;
 	public final RenderLensFlares lensFlareRenderer;
 	public final UIRenderer uiRenderer;
-	
+
+	public final FontFile asciiTextRenderer;
 	public final FontFile unicodeTextRenderer;
+
+	public final MaterialTexture2D metal;
+	public final MaterialTexture2D bricks;
+	public final MaterialTexture2D moss;
+	public final MaterialTexture2D marble;
+	public final MaterialTexture2D wood;
 	
 	public float exposure = 2.0f;
 	public float targetExposure = 2.0f;
@@ -155,8 +169,32 @@ public class GlobalRenderer {
 	
 	public GlobalRenderer(GameClient gameClient) {
 		client = gameClient;
+
+		//setup font renderers =================================================
+		try {
+			InputStream stream = ResourceLoader.loadResource("metaballs/fonts/ascii.eff");
+			asciiTextRenderer = new FontFile(stream);
+			stream.close();
+		}catch(Throwable t2) {
+			throw new RuntimeException("Could not load fonts required for rendering", t2);
+		}
 		
 		uiRenderer = new UIRenderer(this.client);
+		
+		displayInitialLoadingText("loading fonts");
+
+		//setup font renderers =================================================
+		try {
+			InputStream stream = ResourceLoader.loadResource("metaballs/fonts/unicode.eff");
+			unicodeTextRenderer = new FontFile(stream);
+			stream.close();
+		}catch(Throwable t2) {
+			throw new RuntimeException("Could not load fonts required for rendering", t2);
+		}
+		
+		displayLoadingText("loading shaders");
+		
+		RenderUtil.instance = new RenderUtil(this);
 		
 		progManager = new ProgramManager(this);
 
@@ -181,6 +219,8 @@ public class GlobalRenderer {
 		t.uploadVertexes(vbo, true);
 		t.destroy();
 		
+		displayLoadingText("loading bitmaps");
+		
 		//setup test texture ==================================================
 		
 		testGraphic = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/icon64.png"));
@@ -191,18 +231,33 @@ public class GlobalRenderer {
 		moonsTexture = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/moons.jpg")).filter(GL_LINEAR, GL_LINEAR);
 		brdfLUT = EaglImage2D.consumeStream(ResourceLoader.loadResource("metaballs/textures/ibl_brdf_lut.png")).filter(GL_LINEAR, GL_LINEAR);
 		//dirtTexture.generateMipmap().filter(GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR, EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+
+		MaterialFile mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/metal.mtl"));
+		metal = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		mt.destroy();
 		
+		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/bricks.mtl"));
+		bricks = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		mt.destroy();
+
+		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/moss.mtl"));
+		moss = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		mt.destroy();
 		
+		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/marble.mtl"));
+		marble = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		mt.destroy();
 		
-		this.rand = new Random("dgfgfgdfgaga".hashCode());
+		mt = MaterialFile.consumeStream(ResourceLoader.loadResource("metaballs/textures/wood.mtl"));
+		wood = new MaterialTexture2D(mt).generateMipmap().filter(GL_NEAREST_MIPMAP_LINEAR, GL_LINEAR, 0.0f);
+		mt.destroy();
+		
+		displayLoadingText("loading meshes");
+		
+		this.rand = new Random("dgfgfdf3gtaga".hashCode());
 		
 		try {
 			InputStream stream;
-
-		//load font renderer =================================================
-			stream = ResourceLoader.loadResource("metaballs/fonts/unicode.eff");
-			unicodeTextRenderer = new FontFile(stream);
-			stream.close();
 					
 		//load test model =====================================================
 			
@@ -243,7 +298,7 @@ public class GlobalRenderer {
 			testSphere = EaglModelLoader.loadModel(stream);
 			stream.close();
 			
-			for(int i = 0 ; i < 10; ++i) {
+			for(int i = 0 ; i < 5; ++i) {
 				ModelObjectRenderer m = new ModelObjectRenderer(testSphere, 0, ModelObjectRenderer.passes_all_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, rand.nextBoolean() ? 0.0f : 0.75f, 1.0f, 0.2f, 0.05f, 1.0f, 0.0f);
 				m.setPosition(rand.nextFloat() * 40.0d - 20.0d, rand.nextFloat() * 0.5d + 0.5d, rand.nextFloat() * 40.0d - 20.0d);
 				client.getScene().objectRenderers.add(m);
@@ -253,12 +308,34 @@ public class GlobalRenderer {
 			testMirror = EaglModelLoader.loadModel(stream);
 			stream.close();
 			
+			stream = ResourceLoader.loadResource("metaballs/models/texcube.mdl");
+			texCube = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
+			stream = ResourceLoader.loadResource("metaballs/models/texsphere.mdl");
+			texSphere = EaglModelLoader.loadModel(stream);
+			stream.close();
+			
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(testMirror, 0, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setMaterialAndDiffuse(0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.01f, 1.0f, 1.0f, 0.0f).setPosition(4.0d, 0.1d, 8.0d).setRotation(0.0f, 180.0f, 0.0f));
 			client.getScene().objectRenderers.add(new ModelObjectRenderer(longArmsRenderer.array, longArmsRenderer.texture2D, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f).setPosition(4.0d, 0.15d, 8.0d).setScale(0.3f).setRotation(0.0f, 130.0f, 0.0f));
+			
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, bricks.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-4.0d, 1.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, metal.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-10.0d, 1.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, moss.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, marble.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, 1.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texCube, wood.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 1.1d, 7.0d));
+
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, bricks.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-4.0d, 5.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, metal.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-10.0d, 5.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, moss.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 5.1d, -5.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, marble.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 5.1d, 1.0d));
+			client.getScene().objectRenderers.add(new ModelObjectRenderer(texSphere, wood.glObject, ModelObjectRenderer.passes_small_object_opaque, client.getScene()).setPosition(-16.0d, 5.1d, 7.0d));
 			
 		}catch(Throwable tt) {
 			throw new RuntimeException("Could not load model files required for rendering", tt);
 		}
+
+		displayLoadingText("creating scene");
 		
 		//load color temp table =====================================================
 		
@@ -271,7 +348,7 @@ public class GlobalRenderer {
 			client.getScene().lightRenderers.add(new LightData(LightType.POINT, rand.nextInt(200), 0.0f, rand.nextGaussian() * 20.0d, rand.nextGaussian() * 1.0d + 2.0d, rand.nextGaussian() * 20.0d, 3.0f, 0.0f).setRGB(rand.nextFloat(), rand.nextFloat(), rand.nextFloat()).setDirection(0.0f, 1.0f, 0.0f));
 		}
 		
-		client.getScene().shadowLightRenderers.add(lightTest = (ShadowLightRenderer) new ShadowLightRenderer(LightType.SPOT, 100.0f, 0.2f, 0.0d, 5.0d, 0.0d, 1.0f, 0.2f).setRGB(1.0f, 1.0f, 1.0f).setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(20.0f));
+		client.getScene().shadowLightRenderers.add(lightTest = (ShadowLightRenderer) new ShadowLightRenderer(LightType.SPOT, 100.0f, 0.2f, 0.0d, 5.0d, 0.0d, 3.0f, 0.2f).setRGB(1.0f, 1.0f, 1.0f).setDirection(-1.0f, -1.0f, 0.0f).setSpotRadius(20.0f));
 		
 		//setup framebuffer ==================================================
 		
@@ -280,6 +357,8 @@ public class GlobalRenderer {
 		// 1 - metallic, roughness, specular, ssr
 		// 2 - normalXYZ, emission
 		// 3 - position
+		
+		displayLoadingText("creating framebuffers");
 
 		gBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_TEXTURE, GL_RGBA8, GL_RGBA8, GL_RGBA8);
 		lightBuffer = new EaglFramebuffer(gBuffer.depthBuffer, GL_RGB16F, GL_RGB16F);
@@ -314,6 +393,8 @@ public class GlobalRenderer {
 
 		waterRefractionTexture = new EaglFramebuffer(DepthBufferType.NONE, GL_RGBA16F);
 		waterSSRBuffer = new EaglFramebuffer(DepthBufferType.DEPTH24_STENCIL8_RENDERBUFFER, GL_RGBA16F);
+
+		displayLoadingText("initialization complete");
 		
 		//glGenQueries(queryObjectPool);
 	}
@@ -343,17 +424,14 @@ public class GlobalRenderer {
 		sd.set(0.0f, -1.0f, 0.0f);
 		sd.rotateZ(((scene.time / 24000.0f / 27.0f * 360.0f) % 360.0f) * MathUtil.toRadians);
 		sd.rotateY(5.0f * MathUtil.toRadians);
-		sd.rotateZ((((scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
+		sd.rotateZ((((12000 + scene.time + client.partialTicks) * 0.02f) % 360.0f) * MathUtil.toRadians);
 		sd.rotateY(18.5f * MathUtil.toRadians);
+		sd.rotateZ(180.0f * MathUtil.toRadians);
 		
 		scene.skyBrightness = scene.enableSun ? timeOfDay * 2.0f : 0.0f;
 		scene.sunBrightness = scene.enableSun ? 200.0f : 0.0f;
 		
-		scene.sunSize = 0.15f;
-		
 		scene.sunKelvin = (int) lerp(1500.0f, 4000.0f, Math.min(timeOfDay, 1.0f));
-		
-		scene.fogKelvin = 6000;
 		
 		scene.fogDensity = 0.005f;
 		
@@ -440,7 +518,7 @@ public class GlobalRenderer {
 		
 		modelMatrix.clear();
 		
-		testModelRenderer.setMaterial(0.0f, 1.0f, 0.2f, 0.5f, 0.0f, 0.0f);
+		testModelRenderer.setMaterial(0.0f, 0.0f, 0.4f, 0.5f, 0.0f, 0.0f);
 		
 		longArmsRenderer.setMaterial(0.0f, 0.0f, 0.7f, 0.1f, 0.0f, 0.0f);
 		longArmsRenderer.setPosition(0.0d, 0.0d, 0.0d).setRotation(0.0f, (client.totalTicksF * 2f) % 360.0f, 0.0f);
@@ -1617,8 +1695,6 @@ public class GlobalRenderer {
 		modelMatrix.translate(-1.0f, -1.0f, 0.0f);
 		modelMatrix.scale(2.0f / w, 2.0f / h, 0.0f);
 		
-		uiRenderer.bindColorShader(unicodeTextRenderer, modelMatrix);
-		
 		StringBuilder debugInfo = new StringBuilder();
 		debugInfo.append("Calder Young's CS50 Final Project, Physically Based Deffered Rendering\n");
 		debugInfo.append("Press TAB to release mouse, ESC to exit\n");
@@ -1632,11 +1708,15 @@ public class GlobalRenderer {
 		debugInfo.append(" fps");
 		
 		String dbg = debugInfo.toString();
-		
+
+		uiRenderer.bindColorShader(asciiTextRenderer, modelMatrix);
 		uiRenderer.textBegin();
-		uiRenderer.text(dbg, 2, 2, unicodeTextRenderer, 24, 0x777777);
-		uiRenderer.text(dbg, 0, 0, unicodeTextRenderer, 24, 0xFFFFFF);
-		
+		uiRenderer.text(dbg, 2, 2, asciiTextRenderer, 24, 0x777777);
+		uiRenderer.text(dbg, 0, 0, asciiTextRenderer, 24, 0xFFFFFF);
+		uiRenderer.textDraw();
+
+		uiRenderer.bindColorShader(unicodeTextRenderer, modelMatrix);
+		uiRenderer.textBegin();
 		String s = "Unicode Test: \u4F60\u597D\u6211\u53EB\u5361\u723E\u5FB7\u9019\u662F\u6211\u7684\u904A\u6232\u5F15\u64CE";
 		uiRenderer.text(s, 2, h - 26 + 2, unicodeTextRenderer, 24, 0x777777);
 		uiRenderer.text(s, 0, h - 26, unicodeTextRenderer, 24, 0xFFFFFF);
@@ -1645,6 +1725,87 @@ public class GlobalRenderer {
 		modelMatrix.popMatrix();
 		
 		glDisable(GL_BLEND);
+	}
+
+	private EaglProgram tmp_text_color;
+	private EaglUniform tmp_text_color_fontSizePixelsOverTextureDimensions;
+	
+	public void displayInitialLoadingText(String s) {
+		GLStateManager.bindFramebuffer(0);
+		
+		String source = ResourceLoader.loadResourceString("metaballs/shaders/text_color.glsl");
+		EaglShader vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "text_color.vsh");
+		EaglShader fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "text_color.fsh");
+		this.tmp_text_color = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+		
+		tmp_text_color.getUniform("tex").set1i(0);
+		tmp_text_color_fontSizePixelsOverTextureDimensions = tmp_text_color.getUniform("fontSizePixelsOverTextureDimensions");
+		tmp_text_color.use();
+		
+		int w = client.context.getInnerWidth();
+		int h = client.context.getInnerHeight();
+		int w2 = w;
+		int h2 = h;
+		while(w2 > 2000) {
+			w2 /= 2;
+			h2 /= 2;
+		}
+		
+		multipliedMatrix.identity().scale(1.0f, -1.0f, 0.0f).translate(-1.0f, -1.0f, 0.0f).scale(2.0f / w2, 2.0f / h2, 0.0f);
+		tmp_text_color.matrix_mvp.setMatrix4f(multipliedMatrix);
+		tmp_text_color_fontSizePixelsOverTextureDimensions.set1f((float)asciiTextRenderer.size / asciiTextRenderer.getFontAtlasSize());
+		asciiTextRenderer.bindTexture();
+		
+		glViewport(0, 0, w, h);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		uiRenderer.textBegin();
+		uiRenderer.text(s, 6, h2 - 29 + 1, asciiTextRenderer, 24, 0x444444);
+		uiRenderer.text(s, 5, h2 - 29, asciiTextRenderer, 24, 0x777777);
+		uiRenderer.textDraw();
+		glDisable(GL_BLEND);
+		
+		client.context.swapBuffers(false);
+	}
+	
+	public void displayLoadingText(String s) {
+		GLStateManager.bindFramebuffer(0);
+		tmp_text_color.use();
+		
+		int w = client.context.getInnerWidth();
+		int h = client.context.getInnerHeight();
+		int w2 = w;
+		int h2 = h;
+		while(w2 > 2000) {
+			w2 /= 2;
+			h2 /= 2;
+		}
+		
+		multipliedMatrix.identity().scale(1.0f, -1.0f, 0.0f).translate(-1.0f, -1.0f, 0.0f).scale(2.0f / w2, 2.0f / h2, 0.0f);
+		tmp_text_color.matrix_mvp.setMatrix4f(multipliedMatrix);
+		tmp_text_color_fontSizePixelsOverTextureDimensions.set1f((float)asciiTextRenderer.size / asciiTextRenderer.getFontAtlasSize());
+		asciiTextRenderer.bindTexture();
+		
+		glViewport(0, 0, w, h);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		uiRenderer.textBegin();
+		uiRenderer.text(s, 6, h2 - 29 + 1, asciiTextRenderer, 24, 0x444444);
+		uiRenderer.text(s, 5, h2 - 29, asciiTextRenderer, 24, 0x777777);
+		uiRenderer.textDraw();
+		glDisable(GL_BLEND);
+		
+		client.context.swapBuffers(false);
+	}
+	
+	public void destroyLoadingText() {
+		tmp_text_color.destroy();
 	}
 	
 	public void translateToWorldCoords(double x, double y, double z) {
@@ -1827,6 +1988,14 @@ public class GlobalRenderer {
 		this.uiRenderer.destroy();
 		this.waterRefractionTexture.destroy();
 		this.waterSSRBuffer.destroy();
+		this.bricks.destroy();
+		this.metal.destroy();
+		this.texCube.destroy();
+		this.texSphere.destroy();
+		this.moss.destroy();
+		this.marble.destroy();
+		this.wood.destroy();
+		RenderUtil.instance.destroy();
 	}
 
 }

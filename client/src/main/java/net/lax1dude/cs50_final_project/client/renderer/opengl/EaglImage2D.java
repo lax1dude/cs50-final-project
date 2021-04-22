@@ -57,6 +57,7 @@ public class EaglImage2D {
 		imgBuf.flip();
 
 		GLStateManager.bindTexture2D(glObject);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, imgBuf);
 		
 		MemoryUtil.memFree(imgBuf);
@@ -88,6 +89,7 @@ public class EaglImage2D {
 		imgBuf.flip();
 
 		GLStateManager.bindTexture2D(glObject);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, imgBuf);
 		
 		MemoryUtil.memFree(imgBuf);

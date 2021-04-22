@@ -120,13 +120,15 @@ void main() {
 	float r = materialV.g;
 	vec2 specularIBLpos = clipSpaceFromDir2(reflect(normPos, normalC) * vec3(-1.0, -1.0, -1.0));
 	vec3 specularIBLValue;
-	if(r < 0.2) {
+	/*
+	if(r < 0.1) {
 		specularIBLValue = materialV.a > 0.0 ? reflection.rgb : sampleCubemap(normPos, normalC);
-	}else if(r < 0.4) {
+	}else */
+	if(r < 0.2) {
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25)).rgb;
-	}else if(r < 0.6) {
+	}else if(r < 0.4) {
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.25)).rgb;
-	}else if(r < 0.8){
+	}else if(r < 0.6){
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.50)).rgb;
 	}else {
 		specularIBLValue = texture(specularIBL, specularIBLpos * vec2(1.0, 0.25) + vec2(0.0, 0.75)).rgb;

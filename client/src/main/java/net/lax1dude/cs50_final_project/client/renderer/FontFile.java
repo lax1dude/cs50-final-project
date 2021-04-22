@@ -11,6 +11,7 @@ import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.lz4.LZ4;
 
 import net.lax1dude.cs50_final_project.client.GameClient;
+import net.lax1dude.cs50_final_project.client.renderer.opengl.EaglContext;
 import net.lax1dude.cs50_final_project.client.renderer.opengl.GLStateManager;
 
 public class FontFile {
@@ -25,14 +26,14 @@ public class FontFile {
 	private boolean destroyed = false;
 
 	public void destroy() {
-		if(!destroyed) {
+		if(!destroyed && EaglContext.contextAvailable()) {
 			glDeleteTextures(glTexture2D);
 			destroyed = true;
 		}
 	}
 	
 	public void finalize() {
-		if(!destroyed) {
+		if(!destroyed && EaglContext.contextAvailable()) {
 			glDeleteTextures(glTexture2D);
 			GameClient.log.warn("Font file #"+this.glTexture2D+" leaked memory");
 			destroyed = true;

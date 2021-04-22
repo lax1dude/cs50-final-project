@@ -13,7 +13,7 @@ uniform mat4 matrix_m_invtrans;
 
 void main() {
 	v_texCoord = texIn;
-	v_normal = (normIn.xyz * mat3(matrix_m_invtrans)).xyz;
+	v_normal = (mat3(matrix_m_invtrans) * normIn.xyz).xyz;
     gl_Position = matrix_mvp * vec4(posIn, 1.0);
 }
 

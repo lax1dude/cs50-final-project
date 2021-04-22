@@ -99,7 +99,7 @@ public class ModelConverterWindow extends JDialog {
 										OutputStream fos = new FileOutputStream(j.getSelectedFile());
 										try {
 											OBJConverter.convertModel(new String(Files.readAllBytes(ModelConverterWindow.this.file.toPath()), Charset.forName("UTF8")), chckbxNewCheckBox_1.isSelected(),
-													chckbxExportTexcoords.isSelected(), chckbxNewCheckBox.isSelected(), chckbxNewCheckBox_2.isSelected(), chckbxNewCheckBox_3.isSelected(), fos);
+													chckbxExportTexcoords.isSelected(), chckbxNewCheckBox.isSelected(), /*chckbxGenerateTangents.isSelected()*/false, chckbxNewCheckBox_2.isSelected(), chckbxNewCheckBox_3.isSelected(), fos);
 										}catch(Throwable t) {
 											t.printStackTrace();
 											JOptionPane.showMessageDialog(ModelConverterWindow.this, t.toString(), "error", JOptionPane.ERROR_MESSAGE);

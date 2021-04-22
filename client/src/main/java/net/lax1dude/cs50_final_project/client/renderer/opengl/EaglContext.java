@@ -479,7 +479,6 @@ public class EaglContext {
 			int[] h2 = new int[1];
 			glfwGetWindowFrameSize(glfw_windowHandle, x2, y2, w2, h2);
 			glfwSetWindowSize(glfw_windowHandle, ((w - x2[0] - w2[0]) / 4) * 4, ((h - y2[0] - h2[0] - (h / 27)) / 4) * 4);
-			glfwSetWindowAttrib(glfw_windowHandle, GLFW_FLOATING, GLFW_TRUE);
 		}
 
 		glfw_eglHandle = glfwGetEGLDisplay();
