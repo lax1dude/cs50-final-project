@@ -40,8 +40,7 @@ uniform sampler2D lightSpecular;
 uniform sampler2D ssaoBuffer;
 
 uniform samplerCube cubemap;
-uniform sampler2D irradianceMapA;
-uniform sampler2D irradianceMapB;
+uniform sampler2D irradianceMap;
 uniform sampler2D specularIBL;
 
 uniform sampler2D ssrBuffer;
@@ -74,7 +73,7 @@ vec2 uvFromDir2(vec3 dir) {
 
 vec3 sampleIrradianceTexture(vec3 dir) {
 	vec2 pos = uvFromDir2(dir * vec3(-1.0, -1.0, -1.0));
-	return mix(texture(irradianceMapA, pos).rgb, texture(irradianceMapB, pos).rgb, irradianceMapBlend);
+	return mix(texture(irradianceMap, pos * vec2(1.0, 0.5)).rgb, texture(irradianceMap, pos * vec2(1.0, 0.5) + vec2(0.0, 0.5)).rgb, irradianceMapBlend);
 }
 
 vec3 sampleCubemap(vec3 normPos, vec3 normalC) {

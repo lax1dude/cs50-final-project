@@ -1112,9 +1112,7 @@ public class GlobalRenderer {
 
 		ambientOcclusionBuffer.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		cubemapGenerator.bindIrradianceTextureA(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		cubemapGenerator.bindIrradianceTextureB(0);
+		cubemapGenerator.bindIrradianceTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		ssrBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1131,20 +1129,17 @@ public class GlobalRenderer {
 		lightBuffer.bindColorTexture(1, 5);
 		ambientOcclusionBuffer.bindColorTexture(0, 6);
 		cubemapGenerator.bindCubemap(7);
-		cubemapGenerator.bindIrradianceTextureA(8);
-		cubemapGenerator.bindIrradianceTextureB(9);
-		ssrBuffer.bindColorTexture(0, 10);
-		cubemapGenerator.bindSpecularIBLTexture(11);
-		brdfLUT.bind(12);
+		cubemapGenerator.bindIrradianceTexture(8);
+		ssrBuffer.bindColorTexture(0, 9);
+		cubemapGenerator.bindSpecularIBLTexture(10);
+		brdfLUT.bind(11);
 		progManager.gbuffer_combined_irradianceMapBlend.set1f(((float)((this.totalTicks + client.partialTicks - 1) % 20.0f)) / 20.0f);
 		progManager.gbuffer_combined_enableSSR.set1i(GameConfiguration.enableSSR ? 1 : 0);
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		
 		ambientOcclusionBuffer.bindColorTexture(0, 0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		cubemapGenerator.bindIrradianceTextureA(0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		cubemapGenerator.bindIrradianceTextureB(0);
+		cubemapGenerator.bindIrradianceTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		ssrBuffer.bindColorTexture(0);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -1526,7 +1521,7 @@ public class GlobalRenderer {
 		progManager.post_tonemap_exposure.set1f(exposure);
 		postBufferA.bindColorTexture(0);//TODO
 		//bricks.bindTexture(0);
-		//cubemapGenerator.bindSpecularIBLTexture(0);
+		//cubemapGenerator.bindIrradianceTexture(0);
 		
 		quadArray.draw(GL_TRIANGLES, 0, 6);
 		

@@ -21,8 +21,7 @@ class CubemapGenerator {
 	private final int glFramebuffer;
 	private final int glRenderbuffer;
 
-	private final EaglFramebuffer irradianceMapA;
-	private final EaglFramebuffer irradianceMapB;
+	private final EaglFramebuffer irradianceMap;
 	private final EaglFramebuffer specularIBLBuffer;
 	private final EaglFramebuffer specularIBLBlurA;
 	private final EaglFramebuffer specularIBLBlurB;
@@ -52,21 +51,16 @@ class CubemapGenerator {
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution);
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, glRenderbuffer);
 
-		this.irradianceMapA = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
-		this.irradianceMapB = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
+		this.irradianceMap = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
 		this.specularIBLBuffer = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
 		this.specularIBLBlurA = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
 		this.specularIBLBlurB = new EaglFramebuffer(EaglFramebuffer.DepthBufferType.NONE, GL_RGB16F);
 
-		glViewport(0, 0, 32, 32);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glViewport(0, 0, 128, 128);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		
-		this.irradianceMapA.setSize(32, 32);
-		this.irradianceMapA.bindFramebuffer();
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		this.irradianceMapB.setSize(32, 32);
-		this.irradianceMapB.bindFramebuffer();
+		this.irradianceMap.setSize(128, 128);
+		this.irradianceMap.bindFramebuffer();
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
 	
@@ -82,6 +76,9 @@ class CubemapGenerator {
 			redrawCubemapFace(scene, currentFace++);
 			if(currentFace > 5) currentFace = 0;
 		}
+		
+		this.bindCubemap(0);
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
 		this.specularIBLBlurA.setSize(GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution / 2);
 		this.specularIBLBlurB.setSize(GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution / 2);
@@ -90,7 +87,6 @@ class CubemapGenerator {
 		glViewport(0, 0, GameConfiguration.cubeMapResolution, GameConfiguration.cubeMapResolution / 2);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		this.bindCubemap(0);
 		this.renderer.progManager.specular_map_generate.use();
 		this.renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
 		
@@ -117,19 +113,12 @@ class CubemapGenerator {
 	}
 	
 	public void updateIrradianceTexture() {
-		if(irradianceB) {
-			this.irradianceMapB.setSize(128, 64);
-			this.irradianceMapB.bindFramebuffer();
-			irradianceB = false;
-		}else {
-			this.irradianceMapA.setSize(128, 64);
-			this.irradianceMapA.bindFramebuffer();
-			irradianceB = true;
-		}
-
-		glViewport(0, 0, 128, 64);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		irradianceB = !irradianceB;
+		
+		this.irradianceMap.setSize(64, 64);
+		this.irradianceMap.bindFramebuffer();
+			
+		glViewport(0, irradianceB ? 32 : 0, 64, 32);
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE);
 		
@@ -137,14 +126,8 @@ class CubemapGenerator {
 		renderer.quadArray.draw(GL_TRIANGLES, 0, 6);
 	}
 	
-	public void bindIrradianceTextureA(int slot) {
-		if(this.irradianceB) this.irradianceMapB.bindColorTexture(0, slot);
-		else this.irradianceMapA.bindColorTexture(0, slot);
-	}
-	
-	public void bindIrradianceTextureB(int slot) {
-		if(this.irradianceB) this.irradianceMapA.bindColorTexture(0, slot);
-		else this.irradianceMapB.bindColorTexture(0, slot);
+	public void bindIrradianceTexture(int slot) {
+		this.irradianceMap.bindColorTexture(0, slot);
 	}
 	
 	public void bindSpecularIBLTexture(int slot) {
@@ -250,8 +233,7 @@ class CubemapGenerator {
 		glDeleteTextures(glObject);
 		glDeleteFramebuffers(glFramebuffer);
 		glDeleteRenderbuffers(glRenderbuffer);
-		this.irradianceMapA.destroy();
-		this.irradianceMapB.destroy();
+		this.irradianceMap.destroy();
 		this.specularIBLBuffer.destroy();
 		this.specularIBLBlurA.destroy();
 		this.specularIBLBlurB.destroy();

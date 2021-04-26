@@ -281,11 +281,10 @@ public class ProgramManager {
 		gbuffer_combined.getUniform("lightSpecular").set1i(5);
 		gbuffer_combined.getUniform("ssaoBuffer").set1i(6);
 		gbuffer_combined.getUniform("cubemap").set1i(7);
-		gbuffer_combined.getUniform("irradianceMapA").set1i(8);
-		gbuffer_combined.getUniform("irradianceMapB").set1i(9);
-		gbuffer_combined.getUniform("ssrBuffer").set1i(10);
-		gbuffer_combined.getUniform("specularIBL").set1i(11);
-		gbuffer_combined.getUniform("brdfLUT").set1i(12);
+		gbuffer_combined.getUniform("irradianceMap").set1i(8);
+		gbuffer_combined.getUniform("ssrBuffer").set1i(9);
+		gbuffer_combined.getUniform("specularIBL").set1i(10);
+		gbuffer_combined.getUniform("brdfLUT").set1i(11);
 
 		gbuffer_combined_irradianceMapBlend = gbuffer_combined.getUniform("irradianceMapBlend");
 		gbuffer_combined_enableSSR = gbuffer_combined.getUniform("enableSSR");
