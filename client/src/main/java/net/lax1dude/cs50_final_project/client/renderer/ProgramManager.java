@@ -729,6 +729,32 @@ public class ProgramManager {
 		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "cubemap_3f_4b_2f_materialTexture2D.fsh");
 		this.cubemap_3f_4b_2f_materialTexture2D = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
 
+		cubemap_3f_4b_2f_uniform.getUniform("tex").set1i(0);
+		cubemap_3f_4b_2f_uniform.getUniform("shadowMap").set1i(1);
+		cubemap_3f_4b_2f_uniform_metallic = cubemap_3f_4b_2f_uniform.getUniform("metallic");
+		cubemap_3f_4b_2f_uniform_roughness = cubemap_3f_4b_2f_uniform.getUniform("roughness");
+		cubemap_3f_4b_2f_uniform_specular = cubemap_3f_4b_2f_uniform.getUniform("specular");
+		cubemap_3f_4b_2f_uniform_emission = cubemap_3f_4b_2f_uniform.getUniform("emission");
+		cubemap_3f_4b_2f_uniform_shadowMatrix = cubemap_3f_4b_2f_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_2f_uniform_sunDirection = cubemap_3f_4b_2f_uniform.getUniform("sunDirection");
+		cubemap_3f_4b_2f_uniform_sunRGB = cubemap_3f_4b_2f_uniform.getUniform("sunRGB");
+		
+		source = ResourceLoader.loadResourceString("metaballs/shaders/cubemap_3f_4b_uniform.glsl");
+		vsh = new EaglShader(GL_VERTEX_SHADER).compile(source, "cubemap_3f_4b_uniform.vsh");
+		fsh = new EaglShader(GL_FRAGMENT_SHADER).compile(source, "cubemap_3f_4b_uniform.fsh");
+		this.cubemap_3f_4b_uniform = new EaglProgram().compile(vsh, fsh); vsh.destroy(); fsh.destroy();
+
+		cubemap_3f_4b_uniform.getUniform("tex").set1i(0);
+		cubemap_3f_4b_uniform.getUniform("shadowMap").set1i(1);
+		cubemap_3f_4b_uniform_metallic = cubemap_3f_4b_uniform.getUniform("metallic");
+		cubemap_3f_4b_uniform_roughness = cubemap_3f_4b_uniform.getUniform("roughness");
+		cubemap_3f_4b_uniform_specular = cubemap_3f_4b_uniform.getUniform("specular");
+		cubemap_3f_4b_uniform_emission = cubemap_3f_4b_uniform.getUniform("emission");
+		cubemap_3f_4b_uniform_shadowMatrix = cubemap_3f_4b_uniform.getUniform("shadowMatrix");
+		cubemap_3f_4b_uniform_sunDirection = cubemap_3f_4b_uniform.getUniform("sunDirection");
+		cubemap_3f_4b_uniform_sunRGB = cubemap_3f_4b_uniform.getUniform("sunRGB");
+		cubemap_3f_4b_uniform_diffuseColor = cubemap_3f_4b_uniform.getUniform("diffuseColor");
+
 		cubemap_3f_4b_2f_materialTexture2D.getUniform("tex").set1i(0);
 		cubemap_3f_4b_2f_materialTexture2D_sunDirection = cubemap_3f_4b_2f_materialTexture2D.getUniform("sunDirection");
 		cubemap_3f_4b_2f_materialTexture2D_sunRGB = cubemap_3f_4b_2f_materialTexture2D.getUniform("sunRGB");
