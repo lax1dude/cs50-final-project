@@ -491,29 +491,7 @@ public class GlobalRenderer {
 		
 		sortedObjectRenderers.addAll(0, sortedObjectRenderersWithTransparency);
 		
-		// ================================================= RENDER THE G BUFFER =======================================================
-		
-		gBuffer.setSize(w, h);
-		gBuffer.bindFramebuffer();
-		
-		glViewport(0, 0, w, h);
-
-		glStencilMask(0xFF);
-		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		glClearDepthf(0.0f);
-		glClearStencil(0x00);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-		glEnable(GL_STENCIL_TEST);
-		glStencilMask(0xFF);
-		glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
-		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_GREATER);
-		
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
+		// ================================================== SETUP SCENE ========================================================
 		
 		projMatrix.identity().scale(1.0f, 1.0f, -1.0f).perspective(100.0f * MathUtil.toRadians, (float)w / (float)h, 0.1f, GameConfiguration.farPlane);
 		cameraMatrix.identity()
@@ -536,19 +514,39 @@ public class GlobalRenderer {
 		bananaRenderer2.setMaterial(0.0f, 0.0f, 0.6f, 0.2f, 0.0f, 0.0f);
 		bananaRenderer2.setPosition(-22.0d, 4.0d, 13.0d).setRotation(150.0f, -160.0f, -75.0f).setScale(5.0f);
 		
+		// ================================================= DEPTH PREPASS =======================================================
+		
+		gBuffer.setSize(w, h);
+		gBuffer.bindFramebuffer();
+		
+		glViewport(0, 0, w, h);
+
+		glStencilMask(0xFF);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		glClearDepthf(0.0f);
+		glClearStencil(0x00);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		glEnable(GL_STENCIL_TEST);
+		glStencilMask(0xFF);
+		glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+		
+		glColorMask(false, false, false, false);
+		
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_GREATER);
+		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		
 		objectRenderers = sortedObjectRenderers.iterator();
 		while(objectRenderers.hasNext()) {
 			ObjectRenderer r = objectRenderers.next();
 			if(r.shouldRenderPass(RenderPass.G_BUFFER)) {
-				r.renderPass(RenderPass.G_BUFFER, this);
+				r.renderPass(RenderPass.SHADOW_A, this);
 			}
 		}
-		
-		glDisable(GL_STENCIL_TEST);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_GREATER);
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_FRONT);
 		
 		// =================================================== COPY DEPTH BUFFER ==========================================================
 		
@@ -558,7 +556,27 @@ public class GlobalRenderer {
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, opaqueDepthBuffer.glObject);
 		glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT, GL_NEAREST);
 		
+		// ================================================= RENDER THE G BUFFER =======================================================
+
+		gBuffer.bindFramebuffer();
+		
+		glColorMask(true, true, true, true);
+		glDisable(GL_STENCIL_TEST);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_EQUAL);
+		
+		objectRenderers = sortedObjectRenderers.iterator();
+		while(objectRenderers.hasNext()) {
+			ObjectRenderer r = objectRenderers.next();
+			if(r.shouldRenderPass(RenderPass.G_BUFFER)) {
+				r.renderPass(RenderPass.G_BUFFER, this);
+			}
+		}
+		
 		// ================================================= RENDER SUN SHADOW MAPS =======================================================
+		
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
 		
 		sunShadowMap.setSize(GameConfiguration.sunShadowMapResolution * 4, GameConfiguration.sunShadowMapResolution);
 		sunShadowMap.bindFramebuffer();
