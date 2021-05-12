@@ -14,6 +14,6 @@ The source code can be found in src/main/java. The packages in this directory ar
 
 To configure the renderer, check `net.lax1dude.cs50_final_project.client.GameConfiguration`. It has variables to adjust the GLSL compiler settings, shadowmap resolutions, the cloud map resolution, screen space reflection quality, the far plane, and flags for enabling and disabling ambient occlusion, volumetric sunlight, bloom, soft shadows, cloud movement, and screen space reflections.
 
-To configure the scene, create a custom instance of RenderScene and populate the different variables with custom values. There are linked sets for adding and removing `ObjectRenderer`, `LightRenderer`, and `ShadowLightRenderer` objects to the scene.
+To configure the scene, create a custom instance of `net.lax1dude.cs50_final_project.client.renderer.RenderScene` and populate the different variables with custom values. There are linked sets for adding and removing `ObjectRenderer`, `LightRenderer`, and `ShadowLightRenderer` objects to the scene. Then, pass the new RenderScene object to the renderGame function of a `net.lax1dude.cs50_final_project.client.GlobalRenderer` instance
 
 There is a tools application for generating vertex data from wavefront obj files, generating new fonts atlases from truetype font files, and compositing textures for use with the g-buffer material system from individual texture files for every material variable. Import the tools directory as a java project into eclipse.
